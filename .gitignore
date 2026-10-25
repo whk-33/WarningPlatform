@@ -16,3 +16,6 @@ env/
 # pyvis 自动下载的前端库（不应进 git）
 lib/
 *.vis-network*
+
+# 内部实施指南（不推到远程）
+docs/阶段一_算法工程师实施指南.md
