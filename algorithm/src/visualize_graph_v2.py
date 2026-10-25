@@ -154,13 +154,35 @@ print(f"     用浏览器（Chrome/Edge）双击打开即可，可拖拽/缩放/
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 方案 B：精简静态 PNG（matplotlib + kamada_kawai_layout，均匀分布）
+# 方案 B：精简静态 PNG（分层布局，学生→课程→课次/知识点→同侪，从左到右）
 # ═══════════════════════════════════════════════════════════════════════════════
-print("\n方案 B：生成精简静态 PNG...")
-fig, ax = plt.subplots(figsize=(12, 10))
+print("\n方案 B：生成精简静态 PNG（分层布局）...")
+fig, ax = plt.subplots(figsize=(14, 9))
 
-pos = nx.kamada_kawai_layout(G_sub)
-pos[stu_id] = (0.0, 0.0)
+# 分层：按节点类型分配 x 坐标（列），同层内均匀分布 y
+LAYER_X = {"student": 0.0, "course": 2.5, "class_session": 5.0,
+           "knowledge_point": 5.0, "resource": 7.0}
+# 同班同侪学生放最右列
+peer_students = [n for n in G_sub.nodes()
+                 if ntype_of(n) == "student" and n != stu_id]
+
+pos = {}
+for ntype, x in LAYER_X.items():
+    nodes = [n for n in G_sub.nodes() if ntype_of(n) == ntype]
+    if ntype == "student":
+        # 目标学生单独一列，同侪另起一列
+        if stu_id in nodes:
+            pos[stu_id] = (0.0, 0.0)
+        if peer_students:
+            n = len(peer_students)
+            for i, pn in enumerate(peer_students):
+                pos[pn] = (7.5, (i - (n - 1) / 2) * 1.5)
+    else:
+        n = len(nodes)
+        if n == 0:
+            continue
+        for i, node in enumerate(nodes):
+            pos[node] = (x, (i - (n - 1) / 2) * 1.2)
 
 # 按 edge_type 分组画
 edge_groups: dict[str, list] = {}
@@ -221,11 +243,19 @@ for etype in ["attended", "attended_with", "scored_on", "enrolled_in"]:
 ax.legend(handles=node_handles + edge_handles, loc="lower right",
           fontsize=9, framealpha=0.92)
 
-ax.set_title(f"正例学生 {stu_id} · 核心业务子图\n"
+ax.set_title(f"正例学生 {stu_id} · 核心业务子图（分层布局：学生→课程→课次/知识点→同侪）\n"
              f"节点={G_sub.number_of_nodes()}, 边={G_sub.number_of_edges()}  "
              f"(仅保留 4 种核心边，砍掉噪声资源/交互边)",
              fontsize=13, pad=10)
+
+# 列标签（每一层的含义）
+col_labels = {0.0: "目标学生", 2.5: "课程", 5.0: "课次/知识点", 7.5: "同班同侪"}
+for x, label in col_labels.items():
+    ax.text(x, 4.2, label, ha="center", fontsize=11, color="#555",
+            fontweight="bold", transform=ax.transData)
+
 ax.axis("off")
+ax.set_ylim(-4.5, 4.8)
 plt.tight_layout()
 plt.savefig(OUT / "subgraph_clean.png", dpi=180, bbox_inches="tight")
 print(f"  ✅ 精简静态 PNG → {OUT / 'subgraph_clean.png'}")
