@@ -2,10 +2,10 @@
 03_weekly_features.py  —— T3 时序特征提取
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-输入：data/interim/*.parquet（清洗+ID 打通后）
+输入：algorithm/data/interim/*.parquet（清洗+ID 打通后）
 输出：
-  ① data/processed/tft_weekly.parquet       宽表 (stu_id, crs, week, semester) —— TFT 用
-  ② data/processed/deepsurv_events.parquet  生存事件表 (start/end/event_type)   —— DeepSurv 用
+  ① algorithm/data/processed/tft_weekly.parquet       宽表 (stu_id, crs, week, semester) —— TFT 用
+  ② algorithm/data/processed/deepsurv_events.parquet  生存事件表 (start/end/event_type)   —— DeepSurv 用
 
 核心设计：
   - 每行粒度 = 学生 × 课程 × 周（0..15）
@@ -25,13 +25,13 @@ import pandas as pd
 
 # ── 直接读 schema.yaml（绕过 configs 模块） ────────────────────────────────
 import yaml as _yaml
-with open("configs/schema.yaml", encoding="utf-8") as _f:
+with open("algorithm/configs/schema.yaml", encoding="utf-8") as _f:
     _schema_raw = _yaml.safe_load(_f)
 
 
-RAW = Path("data/raw")
-INTERIM = Path("data/interim")
-OUT = Path("data/processed")
+RAW = Path("algorithm/data/raw")
+INTERIM = Path("algorithm/data/interim")
+OUT = Path("algorithm/data/processed")
 OUT.mkdir(parents=True, exist_ok=True)
 
 # ── 常量 ────────────────────────────────────────────────────────────────────

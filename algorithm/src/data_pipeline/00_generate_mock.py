@@ -12,7 +12,7 @@ Mock 数据生成器 · 学业预警平台阶段一
   B) 先修课 AAA < 60 → BBB 挂科概率 70%
   C) 正例学生随堂小测正确率从 wk4 开始明显下滑
 
-用法：python src/data_pipeline/00_generate_mock.py --out data/raw
+用法：python algorithm/src/data_pipeline/00_generate_mock.py --out algorithm/data/raw
 """
 from __future__ import annotations
 
@@ -553,7 +553,7 @@ def generate():
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--out", default="data/raw")
+    parser.add_argument("--out", default="algorithm/data/raw")
     args = parser.parse_args()
 
     out = Path(args.out)

@@ -11,7 +11,8 @@ def chk(name, ok, detail="", level="PASS"):
     if level == "WARN": WARN += 1
     elif ok: PASS += 1
     else: FAIL += 1
-    tag = {"PASS": "✅", "WARN": "⚠️ ", "FAIL": "❌"}[level]
+    if not ok: tag = "❌"
+    else: tag = {"PASS": "✅", "WARN": "⚠️ "}[level]
     print(f"  {tag} {name}  {detail}")
 
 print("═" * 60)
@@ -23,46 +24,46 @@ print("═" * 60)
 # ════════════════════════════════════════════════════════════════════════════
 print("\n▍0. 文件存在性")
 files = [
-    "src/data_pipeline/00_generate_mock.py",
-    "src/data_pipeline/02_clean.py",
-    "src/data_pipeline/03_weekly_features.py",
-    "src/data_pipeline/04_knowledge_map.py",
-    "src/data_pipeline/05_build_graph.py",
-    "tests/test_data_integrity.py",
-    "tests/test_stage1_full.py",
-    "configs/schema.yaml",
+    "algorithm/src/data_pipeline/00_generate_mock.py",
+    "algorithm/src/data_pipeline/02_clean.py",
+    "algorithm/src/data_pipeline/03_weekly_features.py",
+    "algorithm/src/data_pipeline/04_knowledge_map.py",
+    "algorithm/src/data_pipeline/05_build_graph.py",
+    "algorithm/tests/test_data_integrity.py",
+    "algorithm/tests/test_stage1_full.py",
+    "algorithm/configs/schema.yaml",
     ".gitignore",
     "docs/阶段一_算法工程师实施指南.md",
-    "data/processed/graph_nx.json",
-    "data/processed/tft_weekly.parquet",
-    "data/processed/deepsurv_events.parquet",
-    "data/processed/dkt_sequences.parquet",
-    "data/processed/item_kp_map.parquet",
-    "data/processed/item_idx_map.parquet",
-    "data/processed/dim_knowledge_point.parquet",
+    "algorithm/data/processed/graph_nx.json",
+    "algorithm/data/processed/tft_weekly.parquet",
+    "algorithm/data/processed/deepsurv_events.parquet",
+    "algorithm/data/processed/dkt_sequences.parquet",
+    "algorithm/data/processed/item_kp_map.parquet",
+    "algorithm/data/processed/item_idx_map.parquet",
+    "algorithm/data/processed/dim_knowledge_point.parquet",
 ]
 for f in files:
     chk(f"exists {f}", os.path.exists(f))
 
 # graph/ 子目录
-for f in os.listdir("data/processed/graph"):
-    p = f"data/processed/graph/{f}"
+for f in os.listdir("algorithm/data/processed/graph"):
+    p = f"algorithm/data/processed/graph/{f}"
     chk(f"graph/{f}", os.path.exists(p) and os.path.getsize(p) > 0)
 
 # graph_viz/
-for f in os.listdir("data/processed/graph_viz"):
-    p = f"data/processed/graph_viz/{f}"
+for f in os.listdir("algorithm/data/processed/graph_viz"):
+    p = f"algorithm/data/processed/graph_viz/{f}"
     chk(f"viz/{f}", os.path.exists(p) and os.path.getsize(p) > 0)
 
 # ════════════════════════════════════════════════════════════════════════════
 # 1. 源数据链路
 # ════════════════════════════════════════════════════════════════════════════
 print("\n▍1. raw → interim → processed 链路一致性")
-raw = {p.replace(".csv",""): p for p in os.listdir("data/raw") if p.endswith(".csv")}
+raw = {p.replace(".csv",""): p for p in os.listdir("algorithm/data/raw") if p.endswith(".csv")}
 interim = {}
-for p in os.listdir("data/interim"):
+for p in os.listdir("algorithm/data/interim"):
     if p.endswith(".parquet"):
-        interim[p.replace(".parquet","")] = pd.read_parquet(f"data/interim/{p}")
+        interim[p.replace(".parquet","")] = pd.read_parquet(f"algorithm/data/interim/{p}")
 
 # raw CSV 行 vs interim parquet 行
 raw_fix = {
@@ -78,7 +79,7 @@ raw_fix = {
     "course_prereq": "course_prereq.csv",
 }
 for stem, fname in raw_fix.items():
-    csv_path = f"data/raw/{fname}"
+    csv_path = f"algorithm/data/raw/{fname}"
     if not os.path.exists(csv_path):
         continue
     csv = pd.read_csv(csv_path)
@@ -107,7 +108,7 @@ for tname in ["student_info", "registration", "platform_log",
 # 3. T2 异质图
 # ════════════════════════════════════════════════════════════════════════════
 print("\n▍3. T2 异质图")
-with open("data/processed/graph_nx.json") as f:
+with open("algorithm/data/processed/graph_nx.json") as f:
     nx_data = json.load(f)
 G = nx.node_link_graph(nx_data, edges="links")
 G = nx.MultiDiGraph(G)
@@ -154,7 +155,7 @@ chk("无悬挂边", len(orphans) == 0, f"{len(orphans)} 条悬挂" if orphans el
 # 4. T3 TFT + DeepSurv
 # ════════════════════════════════════════════════════════════════════════════
 print("\n▍4. T3 TFT 宽表")
-tft = pd.read_parquet("data/processed/tft_weekly.parquet")
+tft = pd.read_parquet("algorithm/data/processed/tft_weekly.parquet")
 fin = interim["final_result"]
 expected_rows = fin.groupby(["stu_id", "course_code", "semester"]).ngroups * 16
 chk("TFT 行数", len(tft) == expected_rows, f"{len(tft)} vs 预期 {expected_rows}")
@@ -186,7 +187,7 @@ for col in ["ppt_clicks_cum", "hw_days_late_cum", "absent_count_cum"]:
         chk(f"{col} 单调不减", viol == 0, f"下降: {viol}")
 
 # DeepSurv
-surv = pd.read_parquet("data/processed/deepsurv_events.parquet")
+surv = pd.read_parquet("algorithm/data/processed/deepsurv_events.parquet")
 chk("DeepSurv 存在", len(surv) == fin.groupby(["stu_id","course_code","semester"]).ngroups,
     f"{len(surv)} vs {fin.groupby(['stu_id','course_code','semester']).ngroups}")
 
@@ -194,10 +195,10 @@ chk("DeepSurv 存在", len(surv) == fin.groupby(["stu_id","course_code","semeste
 # 5. T4 知识点 + DKT
 # ════════════════════════════════════════════════════════════════════════════
 print("\n▍5. T4 DKT 序列 + 知识点")
-kp = pd.read_parquet("data/processed/dim_knowledge_point.parquet")
-item_map = pd.read_parquet("data/processed/item_kp_map.parquet")
-item_idx_map = pd.read_parquet("data/processed/item_idx_map.parquet")
-dkt = pd.read_parquet("data/processed/dkt_sequences.parquet")
+kp = pd.read_parquet("algorithm/data/processed/dim_knowledge_point.parquet")
+item_map = pd.read_parquet("algorithm/data/processed/item_kp_map.parquet")
+item_idx_map = pd.read_parquet("algorithm/data/processed/item_idx_map.parquet")
+dkt = pd.read_parquet("algorithm/data/processed/dkt_sequences.parquet")
 
 chk("知识点节点数 = 51 (50+unknown)", len(kp) == 51, f"{len(kp)}")
 chk("kp_unknown 存在", "kp_unknown" in kp["kp_id"].values)

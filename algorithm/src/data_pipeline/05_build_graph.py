@@ -1,11 +1,11 @@
 """
 T2 异质图构建脚本 · 学业预警平台
-用法：python src/data_pipeline/05_build_graph.py
+用法：python algorithm/src/data_pipeline/05_build_graph.py
 
 三种输出格式：
-  1) data/processed/graph/*.csv      边列表 CSV（后端 ETL 用）
-  2) data/processed/graph_nx.json    NetworkX node_link（阶段三 GNNExplainer 用）
-  3) data/processed/hetero_data.pt   PyG HeteroData（阶段二 HAN 用，try-import 保护）
+  1) algorithm/data/processed/graph/*.csv      边列表 CSV（后端 ETL 用）
+  2) algorithm/data/processed/graph_nx.json    NetworkX node_link（阶段三 GNNExplainer 用）
+  3) algorithm/data/processed/hetero_data.pt   PyG HeteroData（阶段二 HAN 用，try-import 保护）
 
 节点：student / course / class_session / knowledge_point / resource
 边：enrolled_in / attended / attended_with / scored_on / interacts_with /
@@ -20,8 +20,8 @@ import numpy as np
 import pandas as pd
 import networkx as nx
 
-INTERIM = Path("data/interim")
-OUT = Path("data/processed")
+INTERIM = Path("algorithm/data/interim")
+OUT = Path("algorithm/data/processed")
 GRAPH_OUT = OUT / "graph"
 GRAPH_OUT.mkdir(parents=True, exist_ok=True)
 
@@ -454,7 +454,7 @@ def main():
     print("\n── Validating ──")
     validate(G)
 
-    print("\n✅ T2 异质图构建完成 → data/processed/")
+    print("\n✅ T2 异质图构建完成 → algorithm/data/processed/")
 
 
 if __name__ == "__main__":

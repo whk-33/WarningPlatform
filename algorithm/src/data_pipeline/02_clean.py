@@ -1,6 +1,6 @@
 """
 Mock 数据清洗 + ID 打通
-用法：python src/data_pipeline/02_clean.py
+用法：python algorithm/src/data_pipeline/02_clean.py
 """
 from __future__ import annotations
 
@@ -10,11 +10,11 @@ import numpy as np
 import pandas as pd
 import yaml
 
-RAW = Path("data/raw")
-INTERIM = Path("data/interim")
+RAW = Path("algorithm/data/raw")
+INTERIM = Path("algorithm/data/interim")
 INTERIM.mkdir(parents=True, exist_ok=True)
 
-with open("configs/schema.yaml", encoding="utf-8") as f:
+with open("algorithm/configs/schema.yaml", encoding="utf-8") as f:
     SCHEMA = yaml.safe_load(f)
 
 

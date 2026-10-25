@@ -10,9 +10,9 @@ import numpy as np
 import pandas as pd
 import pytest
 
-INTERIM = Path("data/interim")
-RAW = Path("data/raw")
-PROCESSED = Path("data/processed")
+INTERIM = Path("algorithm/data/interim")
+RAW = Path("algorithm/data/raw")
+PROCESSED = Path("algorithm/data/processed")
 
 # ═════════════════════════════════════════════════════════════════════════════
 # T1 清洗层（原有 10 条，这里新增 2 条）

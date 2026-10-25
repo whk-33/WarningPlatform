@@ -4,7 +4,7 @@
   - 方案 B：精简静态 PNG（matplotlib，砍掉噪声边，只保留 12-15 节点 + 4 种核心边）
 
 运行：python src/visualize_graph_v2.py
-产出：data/processed/graph_viz/subgraph_interactive.html + subgraph_clean.png
+产出：algorithm/data/processed/graph_viz/subgraph_interactive.html + subgraph_clean.png
 """
 import json
 from pathlib import Path
@@ -16,14 +16,14 @@ import pandas as pd
 plt.rcParams["font.sans-serif"] = ["Microsoft YaHei", "SimHei", "DejaVu Sans"]
 plt.rcParams["axes.unicode_minus"] = False
 
-OUT = Path("data/processed/graph_viz")
+OUT = Path("algorithm/data/processed/graph_viz")
 OUT.mkdir(parents=True, exist_ok=True)
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 1. 载入图
 # ═══════════════════════════════════════════════════════════════════════════════
 print("Loading graph...")
-with open("data/processed/graph_nx.json", encoding="utf-8") as f:
+with open("algorithm/data/processed/graph_nx.json", encoding="utf-8") as f:
     G = nx.MultiDiGraph(nx.node_link_graph(json.load(f), edges="links"))
 print(f"  {G.number_of_nodes()} nodes, {G.number_of_edges()} edges")
 
@@ -42,7 +42,7 @@ KEEP_ETYPES = {"enrolled_in", "attended", "attended_with", "scored_on"}
 # 2. 构造精简子图：目标学生 + 3 课 + 4 课次 + 4 知识点 + 2 同班同学 = 14 节点
 #    砍掉 resource 和 interacts_with（噪声边，不影响理解业务结构）
 # ═══════════════════════════════════════════════════════════════════════════════
-target = pd.read_parquet("data/interim/final_result.parquet")
+target = pd.read_parquet("algorithm/data/interim/final_result.parquet")
 positive_stus = target[target["is_positive"] == 1]["stu_id"].unique()
 stu_id = str(positive_stus[0])
 print(f"\n正例目标学生: {stu_id}")

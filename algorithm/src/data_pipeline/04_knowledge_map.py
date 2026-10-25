@@ -2,7 +2,7 @@
 04_knowledge_map.py  —— T4 完整版：知识点体系 + DKT 逐题答题序列
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-输入：data/interim/*.parquet
+输入：algorithm/data/interim/*.parquet
 输出：
   ① dim_knowledge_point.parquet    知识点节点（50 个 + 1 个 kp_unknown 兜底）
   ② edge_course_has_kt.parquet     课程 → 知识点（has_kt 边）
@@ -27,8 +27,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-INTERIM = Path("data/interim")
-OUT = Path("data/processed")
+INTERIM = Path("algorithm/data/interim")
+OUT = Path("algorithm/data/processed")
 OUT.mkdir(parents=True, exist_ok=True)
 
 # ── 先确认 quiz_item 长啥样 ────────────────────────────────────────────────

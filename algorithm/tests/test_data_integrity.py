@@ -1,13 +1,13 @@
 """
 数据完整性测试 · pytest
-所有测试基于 data/interim/*.parquet
+所有测试基于 algorithm/data/interim/*.parquet
 """
 import pandas as pd
 import pytest
 from pathlib import Path
 
-INTERIM = Path("data/interim")
-RAW = Path("data/raw")
+INTERIM = Path("algorithm/data/interim")
+RAW = Path("algorithm/data/raw")
 
 REQUIRED_TABLES = [
     "student_info", "registration", "platform_log",

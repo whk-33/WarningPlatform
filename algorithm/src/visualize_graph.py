@@ -1,6 +1,6 @@
 """
 图可视化脚本：画一个正例学生的局部子图 + 边/节点类型统计
-输出到 data/processed/graph_viz/
+输出到 algorithm/data/processed/graph_viz/
 """
 import json
 from collections import Counter
@@ -14,14 +14,14 @@ import pandas as pd
 plt.rcParams["font.sans-serif"] = ["Microsoft YaHei", "SimHei", "DejaVu Sans"]
 plt.rcParams["axes.unicode_minus"] = False
 
-OUT = Path("data/processed/graph_viz")
+OUT = Path("algorithm/data/processed/graph_viz")
 OUT.mkdir(parents=True, exist_ok=True)
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 1. 载入图
 # ═══════════════════════════════════════════════════════════════════════════════
 print("Loading graph...")
-with open("data/processed/graph_nx.json", encoding="utf-8") as f:
+with open("algorithm/data/processed/graph_nx.json", encoding="utf-8") as f:
     data = json.load(f)
 G = nx.node_link_graph(data, edges="links")
 G = nx.MultiDiGraph(G)
@@ -53,7 +53,7 @@ ETYPE_STYLE = {
 #    只保留：目标学生 + 目标学生直接连的课/课次/知识点 + 最多 3 个同班同学
 #    约 30-50 节点，清晰可辨
 # ═══════════════════════════════════════════════════════════════════════════════
-target = pd.read_parquet("data/interim/final_result.parquet")
+target = pd.read_parquet("algorithm/data/interim/final_result.parquet")
 positive_stus = target[target["is_positive"] == 1]["stu_id"].unique()
 stu_id = str(positive_stus[0])
 print(f"\n正例目标学生: {stu_id}")
