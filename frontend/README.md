@@ -4,7 +4,21 @@
 
 ## 技术栈
 
-- （待补充：React / Vue / 可视化库等）
+- Vue 3 + Vite
+- Element Plus（UI 组件库）
+- ECharts（统计图表）
+- AntV G6（图可视化）
+- Vue Router + Axios
+
+## 本地运行
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+> 当前所有数据均为前端 mock，接口层见 `src/api/`，待后端 `docs/接口约定.md` 确定后替换。
 
 ## 开发约定
 
