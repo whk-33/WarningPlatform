@@ -14,14 +14,15 @@ T2 异质图构建脚本 · 学业预警平台
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import networkx as nx
 
-INTERIM = Path("algorithm/data/interim")
-OUT = Path("algorithm/data/processed")
+INTERIM = Path(os.getenv("WP_INTERIM", "algorithm/data/interim"))
+OUT = Path(os.getenv("WP_PROCESSED", "algorithm/data/processed"))
 GRAPH_OUT = OUT / "graph"
 GRAPH_OUT.mkdir(parents=True, exist_ok=True)
 
@@ -454,7 +455,7 @@ def main():
     print("\n── Validating ──")
     validate(G)
 
-    print("\n✅ T2 异质图构建完成 → algorithm/data/processed/")
+    print(f"\n✅ T2 异质图构建完成 → {OUT}")
 
 
 if __name__ == "__main__":

@@ -22,13 +22,14 @@ DKT 序列格式（每行 = 学生×课×学期）：
 """
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-INTERIM = Path("algorithm/data/interim")
-OUT = Path("algorithm/data/processed")
+INTERIM = Path(os.getenv("WP_INTERIM", "algorithm/data/interim"))
+OUT = Path(os.getenv("WP_PROCESSED", "algorithm/data/processed"))
 OUT.mkdir(parents=True, exist_ok=True)
 
 # ── 先确认 quiz_item 长啥样 ────────────────────────────────────────────────
