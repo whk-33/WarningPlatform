@@ -82,10 +82,19 @@ def load_raw(raw: Path) -> dict[str, pd.DataFrame]:
     if missing:
         sys.exit(
             f"❌ {raw} 缺少文件: {missing}\n"
-            f"   下载地址: https://research.stem.open.ac.uk/ouanalyse/open-dataset-more/\n"
+            f"   下载地址: https://research.stem.open.ac.uk/ouanalyse/dataset/\n"
             f"   解压后把 7 个 csv 放到 {raw} 下即可。")
-    return {f.replace(".csv", ""): pd.read_csv(raw / f, encoding="utf-8-sig")
-            for f in REQUIRED}
+    t = {f.replace(".csv", ""): pd.read_csv(raw / f, encoding="utf-8-sig")
+         for f in REQUIRED}
+    # OULAD 官方说明里 courses.csv 的列名是 length，部分镜像版本叫
+    # module_presentation_length，两种都兼容
+    if "module_presentation_length" not in t["courses"].columns:
+        if "length" in t["courses"].columns:
+            t["courses"] = t["courses"].rename(
+                columns={"length": "module_presentation_length"})
+        else:
+            t["courses"]["module_presentation_length"] = 234
+    return t
 
 
 def save(tables: dict[str, pd.DataFrame], out: Path):
