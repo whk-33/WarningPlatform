@@ -60,6 +60,10 @@ PPT_TYPES = {"oucontent", "ouslide", "subpage", "resource",
 STATUS_MAP = {"Pass": "合格", "Distinction": "优秀",
               "Fail": "不合格", "Withdrawn": "退学"}
 POSITIVE_STATUSES = ["不合格", "缺考", "退学", "休学", "学业警示"]
+# 三级风险：0=低 1=中 2=高（与 schema.yaml 的 label.risk_level 一致）
+RISK_LEVEL_MAP = {"优秀": 0, "良好": 0, "合格": 0,
+                  "不合格": 1, "缺考": 1,
+                  "退学": 2, "休学": 2, "学业警示": 2}
 
 REQUIRED = ["courses.csv", "assessments.csv", "vle.csv", "studentInfo.csv",
             "studentRegistration.csv", "studentAssessment.csv", "studentVle.csv"]
@@ -187,17 +191,17 @@ def build_courses(courses: pd.DataFrame,
              .nunique())
     df["credits"] = df["code"].map(n_asm).fillna(1).astype("int64")
     df["elective"] = False          # OULAD 无必修/选修字段
-    df["prereq"] = None             # OULAD 无先修关系
+    df["prereq"] = pd.Series([None] * len(df), dtype="str")   # 无先修关系
     return df[["code", "name", "credits", "elective", "prereq"]].reset_index(drop=True)
 
 
 def build_course_prereq() -> pd.DataFrame:
     """OULAD 没有课程先修链 → 空表（下游 _course_prereq 会自动 dropna 成 0 条边）"""
     return pd.DataFrame({
-        "course_code": pd.Series(dtype="object"),
-        "prereq_course_code": pd.Series(dtype="object"),
+        "course_code": pd.Series(dtype="str"),
+        "prereq_course_code": pd.Series(dtype="str"),
         "strength": pd.Series(dtype="float64"),
-        "source": pd.Series(dtype="object"),
+        "source": pd.Series(dtype="str"),
     })
 
 
@@ -436,8 +440,12 @@ def build_final_result(info: pd.DataFrame, sa: pd.DataFrame,
 
     df["risk_event_time"] = df.apply(risk_week, axis=1).astype(int)
     df["is_positive"] = df["status"].isin(POSITIVE_STATUSES).astype(int)
+    # 三级风险（与 schema.yaml 的 label.risk_level 一致）：0=低 1=中 2=高
+    df["risk_level"] = df["status"].map(RISK_LEVEL_MAP).fillna(0).astype("int8")
+    df["risk_level_name"] = df["risk_level"].map({0: "低", 1: "中", 2: "高"})
     return df[["stu_num", "course_code", "semester", "final_score", "status",
-               "gpa", "risk_event_time", "stu_id", "is_positive"]]
+               "gpa", "risk_event_time", "stu_id", "is_positive",
+               "risk_level", "risk_level_name"]]
 
 
 def build_id_mapping(info: pd.DataFrame) -> pd.DataFrame:
