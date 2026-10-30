@@ -96,25 +96,32 @@ def save(tables: dict[str, pd.DataFrame], out: Path):
 
 
 def validate_against_mock(out: Path, mock: Path = Path("algorithm/data/interim")):
-    """逐表比对列名，确保下游脚本不会因为字段漂移而 KeyError"""
+    """逐表比对列名 + 字段类型，确保下游脚本和后端不会因字段漂移而报错"""
     if not mock.exists():
-        print("  （未找到 mock interim，跳过列名比对）")
+        print("  （未找到 mock interim，跳过校验）")
         return True
     ok = True
-    print("\n── 与 mock interim 列名比对 ──")
+    print("\n── 与 mock interim 列名/类型比对 ──")
     for p in sorted(mock.glob("*.parquet")):
         target = out / p.name
         if not target.exists():
             print(f"  ⚠️  {p.name}: 适配器未产出")
             continue
-        exp = list(pd.read_parquet(p).columns)
-        got = list(pd.read_parquet(target).columns)
-        miss, extra = set(exp) - set(got), set(got) - set(exp)
+        exp = pd.read_parquet(p)
+        got = pd.read_parquet(target)
+        miss, extra = set(exp.columns) - set(got.columns), set(got.columns) - set(exp.columns)
+        diff_type = [(c, str(exp.dtypes[c]), str(got.dtypes[c]))
+                     for c in exp.columns if c in got.columns
+                     and str(exp.dtypes[c]) != str(got.dtypes[c])]
         if miss or extra:
             ok = False
             print(f"  ❌ {p.name}: 缺={sorted(miss)} 多={sorted(extra)}")
+        elif diff_type:
+            ok = False
+            detail = ", ".join(f"{c}: {a}→{b}" for c, a, b in diff_type)
+            print(f"  ❌ {p.name}: 类型不一致 [{detail}]")
         else:
-            print(f"  ✅ {p.name}: {len(exp)} 列完全一致")
+            print(f"  ✅ {p.name}: {len(exp.columns)} 列 + 类型完全一致")
     return ok
 
 
@@ -128,10 +135,10 @@ def build_student_info(info: pd.DataFrame) -> pd.DataFrame:
     df["gender"] = df["gender"].map({"M": "男", "F": "女"}).fillna("未知")
     df["major"] = df["highest_education"].fillna("未知")
     df["entrance_score"] = pd.to_numeric(df["studied_credits"],
-                                        errors="coerce").fillna(0.0)
+                                        errors="coerce").fillna(0).astype("int64")
     df["past_retake_count"] = pd.to_numeric(df["num_of_prev_attempts"],
-                                            errors="coerce").fillna(0).astype(int)
-    df["special_flag"] = (df["disability"].eq("Y")).astype(int)
+                                            errors="coerce").fillna(0).astype("int64")
+    df["special_flag"] = df["disability"].eq("Y").astype(bool)
     df["stu_id"] = "stu_" + df["stu_num"].astype(str)
     return df[["stu_num", "semester", "gender", "major", "entrance_score",
                "past_retake_count", "special_flag", "stu_id"]]
@@ -154,7 +161,7 @@ def build_registration(reg: pd.DataFrame, info: pd.DataFrame) -> pd.DataFrame:
     retake = info.drop_duplicates(["id_student"])[
         ["id_student", "num_of_prev_attempts"]].set_index("id_student")[
         "num_of_prev_attempts"]
-    df["is_retake"] = df["stu_num"].map(retake).fillna(0).gt(0).astype(int)
+    df["is_retake"] = df["stu_num"].map(retake).fillna(0).gt(0).astype(bool)
     df["stu_id"] = "stu_" + df["stu_num"].astype(str)
     return df[["stu_num", "course_code", "semester", "enroll_date", "drop_date",
                "is_retake", "stu_id"]]
@@ -169,7 +176,7 @@ def build_courses(courses: pd.DataFrame,
     # 无学分字段 → 用该模块考核项数量作为结构代理（必须非常数，否则标准化除零）
     n_asm = (assessments.groupby("code_module")["id_assessment"]
              .nunique())
-    df["credits"] = df["code"].map(n_asm).fillna(1).astype(float)
+    df["credits"] = df["code"].map(n_asm).fillna(1).astype("int64")
     df["elective"] = False          # OULAD 无必修/选修字段
     df["prereq"] = None             # OULAD 无先修关系
     return df[["code", "name", "credits", "elective", "prereq"]].reset_index(drop=True)
@@ -177,8 +184,12 @@ def build_courses(courses: pd.DataFrame,
 
 def build_course_prereq() -> pd.DataFrame:
     """OULAD 没有课程先修链 → 空表（下游 _course_prereq 会自动 dropna 成 0 条边）"""
-    return pd.DataFrame(columns=["course_code", "prereq_course_code",
-                                 "strength", "source"])
+    return pd.DataFrame({
+        "course_code": pd.Series(dtype="object"),
+        "prereq_course_code": pd.Series(dtype="object"),
+        "strength": pd.Series(dtype="float64"),
+        "source": pd.Series(dtype="object"),
+    })
 
 
 def build_calendar(reg: pd.DataFrame) -> pd.DataFrame:
@@ -212,7 +223,7 @@ def build_assessment_config(asm: pd.DataFrame,
     df["release_date"] = (df["deadline"] - pd.Timedelta(days=14)).dt.strftime("%Y-%m-%d")
     df["deadline"] = df["deadline"].dt.strftime("%Y-%m-%d")
     df["type"] = df["assessment_type"].astype(str)
-    df["max_score"] = 100.0
+    df["max_score"] = 100
     df["weight"] = pd.to_numeric(df["weight"], errors="coerce").fillna(0.0)
     return df[["assessment_id", "course_code", "semester", "type",
                "release_date", "deadline", "max_score", "weight"]]
@@ -234,7 +245,7 @@ def build_student_assessment(sa: pd.DataFrame,
     starts = df["code_presentation"].map(presentation_start)
     rel = pd.to_numeric(df["date_submitted"], errors="coerce")
     df["submit_time"] = starts + pd.to_timedelta(rel, unit="D")
-    df["is_absent"] = rel.isna().astype(int)
+    df["is_absent"] = rel.isna().astype(bool)
 
     asm_rel = pd.to_numeric(df["date"], errors="coerce")
     late = (rel - asm_rel).where(rel.notna() & asm_rel.notna(), 0)
@@ -261,10 +272,10 @@ def build_quiz_item(sa: pd.DataFrame, cfg: pd.DataFrame) -> pd.DataFrame:
     """studentAssessment → 逐题序列：每门考核视作 1 道题，
     并按截止日期把考核均匀映射到 kp_{课}_{01..10}（与 04 脚本生成的伪知识点对齐）。
     """
-    df = sa[sa["is_absent"].eq(0)].copy()
+    df = sa[~sa["is_absent"]].copy()
     cfg = attach_deadline_week(cfg)
 
-    # 考核项按截止日期排序 → 均匀分到 10 档伪知识点
+    # 考核项按截止日期排序 → 均匀分到 10 档伪知识点，并生成题目编号
     k = cfg[["assessment_id", "course_code", "semester", "week",
              "deadline_dt"]].copy()
     k = k.sort_values(["course_code", "deadline_dt", "assessment_id"])
@@ -273,16 +284,20 @@ def build_quiz_item(sa: pd.DataFrame, cfg: pd.DataFrame) -> pd.DataFrame:
     k["kp_no"] = ((k["rank"] * 10) // k["n"]).clip(0, 9) + 1
     k["kp_id"] = ("kp_" + k["course_code"] + "_"
                   + k["kp_no"].map(lambda x: f"{x:02d}"))
+    k["item_no"] = k["rank"] + 1
 
     df = df.merge(k[["assessment_id", "course_code", "semester", "week",
-                     "kp_id"]], on="assessment_id", how="left")
+                     "kp_id", "item_no"]], on="assessment_id", how="left")
 
-    df["stu_num_offset"] = df["stu_num"].astype("int64")
-    df["item_id"] = "item_" + df["assessment_id"]
-    df["kp_label_missing"] = False   # 伪知识点：由考核截止日期派生（见文件头说明）
-    df["score"] = (df["score"] >= PASS_SCORE).astype(int)
-    df["max_score"] = 1
     df["week"] = df["week"].fillna(0).astype(int)
+    df["stu_num_offset"] = df["stu_num"].astype("int64")
+    # 题目 ID 与 mock 保持同一命名法：qi_{课}_w{周}_q{序号}
+    df["item_id"] = ("qi_" + df["course_code"].astype(str)
+                     + "_w" + df["week"].astype(str)
+                     + "_q" + df["item_no"].map(lambda x: f"{x:02d}"))
+    df["kp_label_missing"] = False   # 伪知识点：由考核截止日期派生（见文件头说明）
+    df["score"] = (df["score"] >= PASS_SCORE).astype("int64")
+    df["max_score"] = 1
     df["stu_id"] = "stu_" + df["stu_num"].astype(str)
     return df[["stu_num_offset", "item_id", "kp_id", "kp_label_missing",
                "score", "max_score", "week", "course_code", "semester",
@@ -338,10 +353,12 @@ def build_platform_log(vle: pd.DataFrame, sites: pd.DataFrame,
     log["ppt_page_clicks"] = log["ppt_clicks"].fillna(0).astype(int)
     log["video_watch_ratio"] = 0.0            # OULAD 无视频数据
     log["late_minutes"] = 0
-    log["late_flag"] = 0
+    log["late_flag"] = np.zeros(len(log), dtype="int8")
+    log["week"] = log["week"].astype("Int64")
+    # 课次 ID 与 mock 保持同一命名法：cs_{课}_{学期}_wk{周}
     log["class_session_id"] = ("cs_" + log["course_code"] + "_"
                                + log["semester"] + "_wk"
-                               + log["week"].map(lambda w: f"{w:02d}"))
+                               + log["week"].astype(str))
     log["stu_id"] = "stu_" + log["stu_num"].astype(str)
     log["stu_uuid"] = "oulad_" + log["stu_num"].astype(str)
     # 时间戳：优先用该周最早的真实日期，无行为的周用周起始
@@ -391,12 +408,12 @@ def build_final_result(info: pd.DataFrame, sa: pd.DataFrame,
 
     cfg_w = attach_deadline_week(cfg)
     week_map = dict(zip(cfg_w["assessment_id"], cfg_w["week"]))
-    fail = sa[(sa["score"] < PASS_SCORE) & (sa["is_absent"] == 0)].copy()
-    fail["deadline_dt"] = fail["assessment_id"].map(
+    failed = sa[(sa["score"] < PASS_SCORE) & ~sa["is_absent"]].copy()
+    failed["deadline_dt"] = failed["assessment_id"].map(
         dict(zip(cfg_w["assessment_id"], cfg_w["deadline_dt"])))
-    fail["week"] = fail["assessment_id"].map(week_map)
-    fail = fail[fail["deadline_dt"].notna()]
-    ff_map = dict(fail.sort_values("deadline_dt")
+    failed["week"] = failed["assessment_id"].map(week_map)
+    failed = failed[failed["deadline_dt"].notna()]
+    ff_map = dict(failed.sort_values("deadline_dt")
                   .drop_duplicates("stu_id")[["stu_id", "week"]]
                   .itertuples(index=False, name=None))
 
