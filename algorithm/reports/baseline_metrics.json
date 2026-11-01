@@ -1,0 +1,127 @@
+{
+  "model": "M0_baseline",
+  "week": 8,
+  "processed_dir": "D:\\WarningPlatform\\algorithm\\data\\oulad\\processed_full_demo",
+  "n_samples": 25450,
+  "positive_rate": 0.3955,
+  "features": [
+    "gender",
+    "entrance_score",
+    "past_retake_count",
+    "special_flag",
+    "credits",
+    "major_A Level or Equivalent",
+    "major_HE Qualification",
+    "major_Lower Than A Level",
+    "major_No Formal quals",
+    "major_Post Graduate Qualification",
+    "attendance_rate",
+    "ppt_clicks_cum",
+    "absent_count_cum",
+    "quiz_accuracy_cum",
+    "hw_score_cum",
+    "hw_days_late_cum"
+  ],
+  "dropped_constant_features": [
+    "elective",
+    "video_watch_cum"
+  ],
+  "results": {
+    "logistic_regression": {
+      "train": {
+        "n": 17811,
+        "pos_rate": 0.3968,
+        "auc": 0.7822,
+        "pr_auc": 0.728,
+        "recall_at_10pct": 0.2311,
+        "precision_at_10pct": 0.9169,
+        "brier": 0.1803
+      },
+      "val": {
+        "n": 3805,
+        "pos_rate": 0.3997,
+        "auc": 0.789,
+        "pr_auc": 0.7294,
+        "recall_at_10pct": 0.2255,
+        "precision_at_10pct": 0.9026,
+        "brier": 0.1793
+      },
+      "test": {
+        "n": 3834,
+        "pos_rate": 0.3852,
+        "auc": 0.769,
+        "pr_auc": 0.7022,
+        "recall_at_10pct": 0.2282,
+        "precision_at_10pct": 0.8799,
+        "brier": 0.1848
+      }
+    },
+    "mlp": {
+      "train": {
+        "n": 17811,
+        "pos_rate": 0.3968,
+        "auc": 0.8003,
+        "pr_auc": 0.7514,
+        "recall_at_10pct": 0.2315,
+        "precision_at_10pct": 0.9186,
+        "brier": 0.1738
+      },
+      "val": {
+        "n": 3805,
+        "pos_rate": 0.3997,
+        "auc": 0.8027,
+        "pr_auc": 0.7495,
+        "recall_at_10pct": 0.2295,
+        "precision_at_10pct": 0.9184,
+        "brier": 0.1735
+      },
+      "test": {
+        "n": 3834,
+        "pos_rate": 0.3852,
+        "auc": 0.7867,
+        "pr_auc": 0.729,
+        "recall_at_10pct": 0.2322,
+        "precision_at_10pct": 0.8956,
+        "brier": 0.1773
+      }
+    }
+  },
+  "importance": {
+    "logistic_regression_abs_coef": {
+      "性别": 0.3066,
+      "入学成绩": 0.128,
+      "历史重修次数": 0.0386,
+      "特殊情况标记": 0.029,
+      "课程学分": 0.2101,
+      "学历：A Level": 0.1348,
+      "学历：高等教育": 0.1031,
+      "学历：低于 A Level": 0.1961,
+      "学历：无正式学历": 0.0595,
+      "学历：研究生": 0.0229,
+      "出勤率": 0.2059,
+      "课件点击数": 0.2073,
+      "累计缺勤次数": 0.2059,
+      "测验正确率": 0.3538,
+      "作业平均分": 1.2252,
+      "作业迟交天数": 0.2926
+    },
+    "mlp_val_permutation_auc_drop": {
+      "性别": 0.0129,
+      "入学成绩": 0.0051,
+      "历史重修次数": 0.0009,
+      "特殊情况标记": 0.0048,
+      "课程学分": 0.0068,
+      "学历：A Level": 0.002,
+      "学历：高等教育": 0.0013,
+      "学历：低于 A Level": 0.0014,
+      "学历：无正式学历": -0.0003,
+      "学历：研究生": 0.0011,
+      "出勤率": 0.0154,
+      "课件点击数": 0.0013,
+      "累计缺勤次数": 0.0139,
+      "测验正确率": 0.0118,
+      "作业平均分": 0.1367,
+      "作业迟交天数": 0.0108
+    }
+  }
+}

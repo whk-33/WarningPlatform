@@ -1,0 +1,109 @@
+{
+  "model": "M4_HAN",
+  "processed_dir": "D:\\WarningPlatform\\algorithm\\data\\oulad\\processed_full_demo",
+  "node_counts": {
+    "student": 28785,
+    "course": 7,
+    "class_session": 352,
+    "knowledge_point": 71,
+    "resource": 2225
+  },
+  "relations": {
+    "enrolled_in": [
+      7,
+      5
+    ],
+    "rev_enrolled_in": [
+      28785,
+      5
+    ],
+    "attended": [
+      352,
+      5
+    ],
+    "rev_attended": [
+      28785,
+      5
+    ],
+    "attended_with": [
+      28785,
+      5
+    ],
+    "rev_attended_with": [
+      28785,
+      5
+    ],
+    "scored_on": [
+      71,
+      5
+    ],
+    "rev_scored_on": [
+      28785,
+      5
+    ],
+    "interacts_with": [
+      2225,
+      5
+    ],
+    "rev_interacts_with": [
+      28785,
+      5
+    ],
+    "has_kt": [
+      71,
+      5
+    ],
+    "rev_has_kt": [
+      7,
+      5
+    ],
+    "prereq_of": [
+      71,
+      5
+    ],
+    "rev_prereq_of": [
+      71,
+      5
+    ],
+    "supports": [
+      71,
+      5
+    ],
+    "rev_supports": [
+      2225,
+      5
+    ]
+  },
+  "hidden": 64,
+  "neighbors_per_relation": 5,
+  "results": {
+    "val": {
+      "n": 4318,
+      "pos_rate": 0.5431,
+      "auc": 0.9255,
+      "pr_auc": 0.9468,
+      "recall_at_10pct": 0.1838,
+      "precision_at_10pct": 0.9977,
+      "brier": 0.1062
+    },
+    "test": {
+      "n": 4318,
+      "pos_rate": 0.5227,
+      "auc": 0.9208,
+      "pr_auc": 0.9421,
+      "recall_at_10pct": 0.1914,
+      "precision_at_10pct": 1.0,
+      "brier": 0.1082
+    },
+    "test_comparable_to_baseline": {
+      "n": 3836,
+      "pos_rate": 0.4627,
+      "auc": 0.9031,
+      "pr_auc": 0.916,
+      "recall_at_10pct": 0.2163,
+      "precision_at_10pct": 1.0,
+      "brier": 0.1182
+    }
+  },
+  "note": "学生级标签=任意课程为风险正例；学生行为特征只汇总 week<=8 的观测，避免未来泄漏；图边覆盖整学期（interacts_with/scored_on 无时间戳，无法按周过滤），因此 HAN 的 AUC 应读作图关联强度，`test_comparable_to_baseline` 才是与基线的对照；course_prereq 边为空，实际使用 8 类原始边 + 反向边。"
+}

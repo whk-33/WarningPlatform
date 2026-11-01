@@ -1,0 +1,93 @@
+{
+  "model": "M5_causal_backdoor_ols",
+  "treatment": "周均课件点击高于中位数",
+  "outcome": "final_score（剔除退学样本）",
+  "confounders": [
+    "gender",
+    "entrance_score",
+    "past_retake_count",
+    "special_flag",
+    "credits",
+    "elective",
+    "major(哑变量)"
+  ],
+  "main": {
+    "ate": 15.4475,
+    "se": 0.3092,
+    "ci95": [
+      14.9295,
+      16.0004
+    ],
+    "p_value": 0.0,
+    "n": 26784,
+    "coefficients": {
+      "intercept": 28.8772,
+      "treatment": 15.4475,
+      "gender": 7.4034,
+      "entrance_score": 0.1072,
+      "past_retake_count": -2.9674,
+      "special_flag": -3.3634,
+      "credits": 4.006,
+      "elective": 0.0,
+      "major_HE Qualification": 4.7325,
+      "major_Lower Than A Level": -8.4459,
+      "major_No Formal quals": -15.2574,
+      "major_Post Graduate Qualification": 15.3643
+    }
+  },
+  "refutations": {
+    "placebo_treatment": {
+      "ate": 0.1514,
+      "se": 0.3133,
+      "ci95": [
+        -0.6006,
+        0.7462
+      ],
+      "p_value": 0.62892,
+      "n": 26784,
+      "coefficients": {
+        "intercept": 34.4037,
+        "treatment": 0.1514,
+        "gender": 10.7619,
+        "entrance_score": 0.1105,
+        "past_retake_count": -4.2122,
+        "special_flag": -3.9281,
+        "credits": 4.057,
+        "elective": 0.0,
+        "major_HE Qualification": 5.7339,
+        "major_Lower Than A Level": -9.0137,
+        "major_No Formal quals": -16.4161,
+        "major_Post Graduate Qualification": 16.3667
+      }
+    },
+    "random_common_cause": {
+      "ate": 15.4415,
+      "se": 0.3093
+    },
+    "subset_80pct": {
+      "ate": 15.3117,
+      "se": 0.3454,
+      "ci95": [
+        14.4094,
+        16.0254
+      ],
+      "p_value": 0.0,
+      "n": 21427,
+      "coefficients": {
+        "intercept": 29.7866,
+        "treatment": 15.3117,
+        "gender": 7.0959,
+        "entrance_score": 0.1051,
+        "past_retake_count": -2.7789,
+        "special_flag": -2.9354,
+        "credits": 3.9243,
+        "elective": -0.0,
+        "major_HE Qualification": 4.4745,
+        "major_Lower Than A Level": -8.596,
+        "major_No Formal quals": -16.6612,
+        "major_Post Graduate Qualification": 15.3352
+      }
+    }
+  },
+  "wording": "观察性数据的因果估计，不是因果证明。"
+}
