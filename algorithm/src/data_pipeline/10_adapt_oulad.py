@@ -186,10 +186,15 @@ def build_courses(courses: pd.DataFrame,
     # OULAD 模块名被匿名化（AAA..GGG），保留代码作为名称
     df["code"] = df["code_module"].astype(str)
     df["name"] = "OULAD模块" + df["code"]
-    # 无学分字段 → 用该模块考核项数量作为结构代理（必须非常数，否则标准化除零）
+    # 无学分字段 → 按考核项数量分档映射为演示学分（2–5）
+    # 注意：① 不能用考核数量本身（会得到 12/52 这类失真值，扭曲 risk_score 加权）
+    #       ② 也不能映射成常数（05 里 credits_norm = (x-mean)/std，常数列会除零得到 NaN）
     n_asm = (assessments.groupby("code_module")["id_assessment"]
              .nunique())
-    df["credits"] = df["code"].map(n_asm).fillna(1).astype("int64")
+    df["credits"] = (df["code"].map(n_asm).fillna(1)
+                     .map(lambda n: 2 if n <= 15 else 3 if n <= 30
+                          else 4 if n <= 40 else 5)
+                     .astype("int64"))
     df["elective"] = False          # OULAD 无必修/选修字段
     df["prereq"] = pd.Series([None] * len(df), dtype="str")   # 无先修关系
     return df[["code", "name", "credits", "elective", "prereq"]].reset_index(drop=True)

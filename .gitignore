@@ -22,5 +22,8 @@ docs/阶段一_算法工程师实施指南.md
 
 # 公开数据集原始文件与适配产物（体积大/有许可，不入库）
 algorithm/data/oulad_raw/
+
+# 本地私有笔记（含阶段性实施指南，不入库）
+_local_notes/
 algorithm/data/oulad/
 algorithm/data/public/
