@@ -41,7 +41,16 @@ class Settings:
         PROJECT_ROOT / "algorithm" / "data" / "interim",
     ]
 
+    # 按优先级探测：演示增强层（graph_api 5MB）-> 适配产物 -> mock；
+    # 最后才回退到 graph_nx.json（真实数据下约 100MB，启动解析慢且只用到 student/course）
     graph_candidates = [
+        _env_path(
+            "WP_GRAPH",
+            PROJECT_ROOT / "algorithm" / "data" / "oulad" / "processed_full_demo" / "graph_api.json",
+        ),
+        PROJECT_ROOT / "algorithm" / "data" / "oulad" / "processed_demo" / "graph_api.json",
+        PROJECT_ROOT / "algorithm" / "data" / "oulad" / "processed" / "graph_api.json",
+        PROJECT_ROOT / "algorithm" / "data" / "processed" / "graph_api.json",
         PROJECT_ROOT / "algorithm" / "data" / "oulad" / "processed" / "graph_nx.json",
         PROJECT_ROOT / "algorithm" / "data" / "processed" / "graph_nx.json",
     ]
