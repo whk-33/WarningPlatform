@@ -41,6 +41,14 @@ build/
 Thumbs.db
 desktop.ini
 
+# ========== 本地工具/助手缓存（不入库） ==========
+.workbuddy/
+
+# ========== 后端本地文件 ==========
+.env
+backend/.env
+backend/data/
+
 # ========== 真实数据（不入 git，mock 数据可入） ==========
 # data/real/
 # data/raw_real/
