@@ -1,88 +1,81 @@
 import { createRouter, createWebHistory } from 'vue-router'
-// admin页面
-import AdminHome from '../views/admin/Home.vue'
-import StudentList from '../views/admin/StudentList.vue'
-import GnnView from '../views/admin/GnnView.vue'
-import WarnResult from '../views/admin/WarnResult.vue'
-import AdminLogin from '../views/admin/Login.vue'
-// student页面
-import StudentLogin from '../views/student/Login.vue'
-import StudentHome from '../views/student/Home.vue'
+import { ElMessage } from 'element-plus'
+import { getRole, getToken, homePath, loginPath } from '../utils/auth'
 
 const routes = [
   {
     path: '/',
-    name: 'adminHome',
-    component: AdminHome,
-    meta: { role: 'admin' }
-  },
-  {
-    path: '/student-list',
-    name: 'studentList',
-    component: StudentList,
-    meta: { role: 'admin' }
-  },
-  {
-    path: '/gnn-view',
-    name: 'gnnView',
-    component: GnnView,
-    meta: { role: 'admin' }
-  },
-  {
-    path: '/warn-result',
-    name: 'warnResult',
-    component: WarnResult,
-    meta: { role: 'admin' }
+    name: 'AdminHome',
+    component: () => import('../views/admin/Home.vue'),
+    meta: { requiresAuth: true, role: 'admin', title: '数据概览' }
   },
   {
     path: '/admin-login',
-    name: 'adminLogin',
-    component: AdminLogin,
-    meta: { hideMenu: true }
+    name: 'AdminLogin',
+    component: () => import('../views/admin/Login.vue'),
+    meta: { hideMenu: true, title: '管理员登录' }
+  },
+  {
+    path: '/students',
+    name: 'StudentList',
+    component: () => import('../views/admin/StudentList.vue'),
+    meta: { requiresAuth: true, role: 'admin', title: '学生管理' }
+  },
+  {
+    path: '/warn',
+    name: 'WarnResult',
+    component: () => import('../views/admin/WarnResult.vue'),
+    meta: { requiresAuth: true, role: 'admin', title: '预警结果' }
+  },
+  {
+    path: '/gnn',
+    name: 'GnnView',
+    component: () => import('../views/admin/GnnView.vue'),
+    meta: { requiresAuth: true, role: 'admin', title: 'GNN 分析' }
   },
   {
     path: '/student-login',
-    name: 'studentLogin',
-    component: StudentLogin,
-    meta: { hideMenu: true }
+    name: 'StudentLogin',
+    component: () => import('../views/student/Login.vue'),
+    meta: { hideMenu: true, title: '学生登录' }
   },
   {
     path: '/student-home',
-    name: 'studentHome',
-    component: StudentHome,
-    meta: { role: 'student' }
-  }
+    name: 'StudentHome',
+    component: () => import('../views/student/Home.vue'),
+    meta: { requiresAuth: true, role: 'student', title: '我的预警' }
+  },
+  { path: '/:pathMatch(.*)*', redirect: '/' }
 ]
 
 const router = createRouter({
-  history: createWebHistory(),
+  // 部署在子路径时由 vite 的 base 决定，保证和静态资源路径一致
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes
 })
 
-router.beforeEach((to, from, next) => {
-  const token = localStorage.getItem('token')
-  const role = localStorage.getItem('role')
-  // 两个登录页面直接放行
-  if (to.name === 'adminLogin' || to.name === 'studentLogin') {
-    next()
-    return
+router.beforeEach(to => {
+  const token = getToken()
+  const role = getRole()
+
+  if (to.meta.requiresAuth && !token) {
+    return loginPath(role || to.meta.role)
   }
-  // 无token，跳到学生登录页
-  if (!token) {
-    next('/student-login')
-    return
+
+  // 登录页已登录时直接回各自首页
+  if (to.meta.hideMenu && token) {
+    return homePath(role)
   }
-  // 角色校验
-  if (to.meta.role && to.meta.role !== role) {
-    alert('没有权限访问该页面！')
-    if (role === 'admin') {
-      next('/')
-    } else {
-      next('/student-home')
-    }
-    return
+
+  if (to.meta.requiresAuth && to.meta.role && role && to.meta.role !== role) {
+    ElMessage.warning('没有权限访问该页面')
+    return homePath(role)
   }
-  next()
+  return true
+})
+
+router.afterEach(to => {
+  document.title = to.meta.title ? `${to.meta.title} · GNN 学业预警平台` : 'GNN 学业预警平台'
 })
 
 export default router

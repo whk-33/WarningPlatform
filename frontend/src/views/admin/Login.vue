@@ -1,62 +1,118 @@
+<script setup>
+import { reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import { loginAdmin } from '../../api'
+import { saveAuth } from '../../utils/auth'
+
+const router = useRouter()
+const loading = ref(false)
+const form = reactive({ username: '', password: '' })
+
+async function handleLogin() {
+  if (!form.username.trim() || !form.password) {
+    ElMessage.warning('请输入账号和密码')
+    return
+  }
+  loading.value = true
+  try {
+    const data = await loginAdmin({
+      username: form.username.trim(),
+      password: form.password
+    })
+    saveAuth(data)
+    ElMessage.success(`欢迎回来，${data.name}`)
+    router.replace('/')
+  } catch {
+    // 401/422 已由请求拦截器提示
+  } finally {
+    loading.value = false
+  }
+}
+</script>
+
 <template>
-  <div class="login-wrap">
-    <el-card class="login-card">
-      <h2 style="text-align:center;margin-bottom:24px">管理员登录</h2>
-      <el-form ref="formRef" :model="form">
+  <div class="login-page">
+    <el-card class="login-card" shadow="always">
+      <div class="head">
+        <span class="logo">GNN</span>
+        <h2>学业预警平台</h2>
+        <p class="muted">管理员登录</p>
+      </div>
+
+      <el-form :model="form" label-position="top" @submit.prevent="handleLogin">
         <el-form-item label="账号">
-          <el-input v-model="form.username" placeholder="请输入管理员账号"></el-input>
+          <el-input v-model="form.username" placeholder="admin" clearable @keyup.enter="handleLogin" />
         </el-form-item>
         <el-form-item label="密码">
-          <el-input v-model="form.password" type="password" placeholder="请输入密码"></el-input>
+          <el-input
+            v-model="form.password"
+            type="password"
+            placeholder="wp123456"
+            show-password
+            @keyup.enter="handleLogin"
+          />
         </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handleLogin" style="width:100%">登录</el-button>
-        </el-form-item>
+        <el-button type="primary" class="submit" :loading="loading" @click="handleLogin">登录</el-button>
       </el-form>
-      <div class="tip">
-        <el-link type="info" @click="$router.push('/student-login')">学生入口</el-link>
+
+      <div class="foot">
+        <span class="muted">演示账号 admin / wp123456</span>
+        <router-link to="/student-login">学生入口 →</router-link>
       </div>
     </el-card>
   </div>
 </template>
 
-<script setup>
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
-const router = useRouter()
-
-const form = ref({
-  username: '',
-  password: ''
-})
-
-const handleLogin = () => {
-  // 模拟管理员登录校验，后续对接后端接口替换这里
-  if (form.value.username && form.value.password) {
-    localStorage.setItem('token', 'admin-token-123')
-    localStorage.setItem('role', 'admin')
-    router.push('/')
-  } else {
-    alert('请输入账号和密码')
-  }
-}
-</script>
-
 <style scoped>
-.login-wrap {
+.login-page {
+  width: 100%;
+  min-height: 100vh;
   display: flex;
+  align-items: center;
   justify-content: center;
-  padding-top: 120px;
-  background-color: #f5f7fa;
-  height: 100vh;
-  box-sizing: border-box;
+  background: linear-gradient(135deg, #eef3ff 0%, #f7f9fc 60%, #eef7f4 100%);
+  padding: 24px;
 }
+
 .login-card {
-  width: 400px;
-  padding: 30px;
+  width: 380px;
+  max-width: 100%;
+  border-radius: 12px;
 }
-.tip {
-  margin-top:16px;
-  text-align:center;
+
+.head {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  background: #2f6bff;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.head h2 {
+  margin: 10px 0 4px;
+  font-size: 19px;
+  font-weight: 600;
+}
+
+.submit {
+  width: 100%;
+}
+
+.foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 16px;
 }
 </style>
