@@ -1,0 +1,33 @@
+{
+  "model": "M1_DKT",
+  "processed_dir": "D:\\WarningPlatform\\algorithm\\data\\oulad\\processed_full_demo",
+  "n_sequences": 25580,
+  "n_items": 188,
+  "n_kps": 71,
+  "split": {
+    "train": 17896,
+    "val": 3861,
+    "test": 3823
+  },
+  "results": {
+    "val": {
+      "n": 21595,
+      "pos_rate": 0.9562,
+      "auc": 0.8414,
+      "pr_auc": 0.9903,
+      "recall_at_10pct": 0.1046,
+      "precision_at_10pct": 1.0,
+      "brier": 0.0346
+    },
+    "test": {
+      "n": 21904,
+      "pos_rate": 0.9632,
+      "auc": 0.8115,
+      "pr_auc": 0.9904,
+      "recall_at_10pct": 0.1038,
+      "precision_at_10pct": 1.0,
+      "brier": 0.0312
+    }
+  },
+  "caveat": "OULAD 无真实题目/知识点标注，kp_idx 为按考核截止日期的伪标签；AUC 只证明流程正确，不能作为教学质量结论。"
+}

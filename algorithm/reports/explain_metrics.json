@@ -1,0 +1,1026 @@
+{
+  "method": "边遮挡归因（delete-one occlusion）",
+  "why_not_mask": "HAN 输出 logit 饱和（高风险学生 sigmoid≈0.9999），概率空间与掩码空间的梯度均失效，实测边掩码全部收敛到 1；改用确定性遮挡后 importance 与删除验证口径一致。",
+  "n_explained": 12,
+  "avg_drop_high_risk": 0.0004,
+  "faithfulness": {
+    "n_students": 100,
+    "avg_logit_drop_top3": 2.1161,
+    "avg_logit_drop_random3": -0.9213,
+    "avg_prob_drop_top3": 0.2425,
+    "median_prob_drop_top3": 0.1402,
+    "n_prob_drop_visible": 78,
+    "students": [
+      {
+        "stu_id": "stu_675495",
+        "risk_prob": 0.7782,
+        "logit_drop_top3": 3.3176,
+        "logit_drop_random3": -0.7342
+      },
+      {
+        "stu_id": "stu_1477284",
+        "risk_prob": 0.7165,
+        "logit_drop_top3": 2.645,
+        "logit_drop_random3": -1.6821
+      },
+      {
+        "stu_id": "stu_576834",
+        "risk_prob": 0.6312,
+        "logit_drop_top3": -0.6062,
+        "logit_drop_random3": -1.7165
+      },
+      {
+        "stu_id": "stu_1583847",
+        "risk_prob": 0.7843,
+        "logit_drop_top3": 3.8929,
+        "logit_drop_random3": 0.072
+      },
+      {
+        "stu_id": "stu_677323",
+        "risk_prob": 0.999,
+        "logit_drop_top3": 0.4503,
+        "logit_drop_random3": -0.1928
+      },
+      {
+        "stu_id": "stu_253516",
+        "risk_prob": 0.9998,
+        "logit_drop_top3": 2.7399,
+        "logit_drop_random3": 0.2324
+      },
+      {
+        "stu_id": "stu_305824",
+        "risk_prob": 0.9992,
+        "logit_drop_top3": 2.6991,
+        "logit_drop_random3": -0.1889
+      },
+      {
+        "stu_id": "stu_602913",
+        "risk_prob": 0.5692,
+        "logit_drop_top3": 2.2369,
+        "logit_drop_random3": -2.801
+      },
+      {
+        "stu_id": "stu_553437",
+        "risk_prob": 0.9843,
+        "logit_drop_top3": 1.1096,
+        "logit_drop_random3": -0.5375
+      },
+      {
+        "stu_id": "stu_250159",
+        "risk_prob": 0.5618,
+        "logit_drop_top3": 2.5972,
+        "logit_drop_random3": -0.042
+      },
+      {
+        "stu_id": "stu_620283",
+        "risk_prob": 0.9862,
+        "logit_drop_top3": 1.9691,
+        "logit_drop_random3": -0.1129
+      },
+      {
+        "stu_id": "stu_544296",
+        "risk_prob": 0.9878,
+        "logit_drop_top3": 1.4048,
+        "logit_drop_random3": -1.3073
+      },
+      {
+        "stu_id": "stu_628216",
+        "risk_prob": 0.649,
+        "logit_drop_top3": 3.0813,
+        "logit_drop_random3": -1.4151
+      },
+      {
+        "stu_id": "stu_589665",
+        "risk_prob": 0.9998,
+        "logit_drop_top3": 2.4091,
+        "logit_drop_random3": 0.1582
+      },
+      {
+        "stu_id": "stu_405125",
+        "risk_prob": 0.6967,
+        "logit_drop_top3": 3.5955,
+        "logit_drop_random3": -0.7353
+      },
+      {
+        "stu_id": "stu_587226",
+        "risk_prob": 0.9943,
+        "logit_drop_top3": 2.94,
+        "logit_drop_random3": -1.1831
+      },
+      {
+        "stu_id": "stu_557708",
+        "risk_prob": 0.9453,
+        "logit_drop_top3": 1.4238,
+        "logit_drop_random3": -0.4156
+      },
+      {
+        "stu_id": "stu_634615",
+        "risk_prob": 0.9994,
+        "logit_drop_top3": 1.3927,
+        "logit_drop_random3": -0.1592
+      },
+      {
+        "stu_id": "stu_54772",
+        "risk_prob": 0.9999,
+        "logit_drop_top3": 1.0688,
+        "logit_drop_random3": 0.3852
+      },
+      {
+        "stu_id": "stu_600325",
+        "risk_prob": 0.9994,
+        "logit_drop_top3": 3.3855,
+        "logit_drop_random3": -0.1738
+      },
+      {
+        "stu_id": "stu_645052",
+        "risk_prob": 0.9947,
+        "logit_drop_top3": 0.4011,
+        "logit_drop_random3": -2.5936
+      },
+      {
+        "stu_id": "stu_655747",
+        "risk_prob": 0.9998,
+        "logit_drop_top3": 1.2729,
+        "logit_drop_random3": 0.2559
+      },
+      {
+        "stu_id": "stu_491959",
+        "risk_prob": 0.8831,
+        "logit_drop_top3": 3.7152,
+        "logit_drop_random3": 1.6278
+      },
+      {
+        "stu_id": "stu_596275",
+        "risk_prob": 0.6064,
+        "logit_drop_top3": 1.2492,
+        "logit_drop_random3": -0.305
+      },
+      {
+        "stu_id": "stu_547268",
+        "risk_prob": 0.9995,
+        "logit_drop_top3": 2.0612,
+        "logit_drop_random3": null
+      },
+      {
+        "stu_id": "stu_605091",
+        "risk_prob": 0.9983,
+        "logit_drop_top3": 4.0357,
+        "logit_drop_random3": -0.1211
+      },
+      {
+        "stu_id": "stu_574820",
+        "risk_prob": 0.9992,
+        "logit_drop_top3": 1.3854,
+        "logit_drop_random3": -0.0524
+      },
+      {
+        "stu_id": "stu_631563",
+        "risk_prob": 0.4935,
+        "logit_drop_top3": 0.6386,
+        "logit_drop_random3": -0.7296
+      },
+      {
+        "stu_id": "stu_546243",
+        "risk_prob": 0.4142,
+        "logit_drop_top3": 1.9697,
+        "logit_drop_random3": -0.96
+      },
+      {
+        "stu_id": "stu_610751",
+        "risk_prob": 0.9981,
+        "logit_drop_top3": 2.8041,
+        "logit_drop_random3": -1.1288
+      },
+      {
+        "stu_id": "stu_681710",
+        "risk_prob": 0.5907,
+        "logit_drop_top3": 2.4913,
+        "logit_drop_random3": -0.7237
+      },
+      {
+        "stu_id": "stu_555422",
+        "risk_prob": 0.9994,
+        "logit_drop_top3": 2.2126,
+        "logit_drop_random3": -0.0596
+      },
+      {
+        "stu_id": "stu_648058",
+        "risk_prob": 0.9524,
+        "logit_drop_top3": 3.0074,
+        "logit_drop_random3": -0.6991
+      },
+      {
+        "stu_id": "stu_2643034",
+        "risk_prob": 0.9907,
+        "logit_drop_top3": 2.9196,
+        "logit_drop_random3": -0.9085
+      },
+      {
+        "stu_id": "stu_501203",
+        "risk_prob": 0.6832,
+        "logit_drop_top3": 3.6822,
+        "logit_drop_random3": -0.7474
+      },
+      {
+        "stu_id": "stu_508848",
+        "risk_prob": 0.9994,
+        "logit_drop_top3": 1.0794,
+        "logit_drop_random3": 0.0492
+      },
+      {
+        "stu_id": "stu_645784",
+        "risk_prob": 0.7468,
+        "logit_drop_top3": 1.6132,
+        "logit_drop_random3": -3.7015
+      },
+      {
+        "stu_id": "stu_2327494",
+        "risk_prob": 0.558,
+        "logit_drop_top3": 1.654,
+        "logit_drop_random3": -1.6948
+      },
+      {
+        "stu_id": "stu_445474",
+        "risk_prob": 0.9993,
+        "logit_drop_top3": 0.9927,
+        "logit_drop_random3": -0.4039
+      },
+      {
+        "stu_id": "stu_432474",
+        "risk_prob": 0.9993,
+        "logit_drop_top3": 1.287,
+        "logit_drop_random3": -0.2875
+      },
+      {
+        "stu_id": "stu_515203",
+        "risk_prob": 0.9456,
+        "logit_drop_top3": 1.8191,
+        "logit_drop_random3": -2.6064
+      },
+      {
+        "stu_id": "stu_620933",
+        "risk_prob": 0.988,
+        "logit_drop_top3": 1.1461,
+        "logit_drop_random3": -0.7426
+      },
+      {
+        "stu_id": "stu_545124",
+        "risk_prob": 0.9995,
+        "logit_drop_top3": 2.421,
+        "logit_drop_random3": -0.1806
+      },
+      {
+        "stu_id": "stu_567152",
+        "risk_prob": 0.9853,
+        "logit_drop_top3": 2.8946,
+        "logit_drop_random3": -0.6557
+      },
+      {
+        "stu_id": "stu_649215",
+        "risk_prob": 0.9952,
+        "logit_drop_top3": 2.6074,
+        "logit_drop_random3": -0.2207
+      },
+      {
+        "stu_id": "stu_381646",
+        "risk_prob": 0.4757,
+        "logit_drop_top3": 0.7357,
+        "logit_drop_random3": -1.5106
+      },
+      {
+        "stu_id": "stu_588058",
+        "risk_prob": 0.8851,
+        "logit_drop_top3": 2.7932,
+        "logit_drop_random3": -0.4546
+      },
+      {
+        "stu_id": "stu_54388",
+        "risk_prob": 0.9769,
+        "logit_drop_top3": 1.8367,
+        "logit_drop_random3": -1.9682
+      },
+      {
+        "stu_id": "stu_497226",
+        "risk_prob": 0.4652,
+        "logit_drop_top3": 1.8284,
+        "logit_drop_random3": -2.8442
+      },
+      {
+        "stu_id": "stu_652584",
+        "risk_prob": 0.9941,
+        "logit_drop_top3": 0.5302,
+        "logit_drop_random3": -2.0816
+      },
+      {
+        "stu_id": "stu_583092",
+        "risk_prob": 0.5247,
+        "logit_drop_top3": 1.5093,
+        "logit_drop_random3": -1.39
+      },
+      {
+        "stu_id": "stu_650461",
+        "risk_prob": 0.5176,
+        "logit_drop_top3": 0.8498,
+        "logit_drop_random3": -2.498
+      },
+      {
+        "stu_id": "stu_595077",
+        "risk_prob": 0.9949,
+        "logit_drop_top3": 2.8188,
+        "logit_drop_random3": -1.6816
+      },
+      {
+        "stu_id": "stu_308953",
+        "risk_prob": 0.9212,
+        "logit_drop_top3": 3.8966,
+        "logit_drop_random3": -0.6918
+      },
+      {
+        "stu_id": "stu_676366",
+        "risk_prob": 0.999,
+        "logit_drop_top3": 0.4878,
+        "logit_drop_random3": -0.1428
+      },
+      {
+        "stu_id": "stu_1592048",
+        "risk_prob": 0.8492,
+        "logit_drop_top3": 3.9088,
+        "logit_drop_random3": -0.3082
+      },
+      {
+        "stu_id": "stu_649159",
+        "risk_prob": 0.5924,
+        "logit_drop_top3": 0.9867,
+        "logit_drop_random3": -3.3764
+      },
+      {
+        "stu_id": "stu_555360",
+        "risk_prob": 0.9778,
+        "logit_drop_top3": 3.8934,
+        "logit_drop_random3": -0.1631
+      },
+      {
+        "stu_id": "stu_680614",
+        "risk_prob": 0.9502,
+        "logit_drop_top3": 0.4411,
+        "logit_drop_random3": -0.4568
+      },
+      {
+        "stu_id": "stu_494443",
+        "risk_prob": 0.5786,
+        "logit_drop_top3": 0.7624,
+        "logit_drop_random3": -0.6031
+      },
+      {
+        "stu_id": "stu_572011",
+        "risk_prob": 0.5082,
+        "logit_drop_top3": 2.0649,
+        "logit_drop_random3": -0.9093
+      },
+      {
+        "stu_id": "stu_188251",
+        "risk_prob": 0.5306,
+        "logit_drop_top3": 2.1075,
+        "logit_drop_random3": -1.427
+      },
+      {
+        "stu_id": "stu_535761",
+        "risk_prob": 0.9995,
+        "logit_drop_top3": 2.4639,
+        "logit_drop_random3": -0.3556
+      },
+      {
+        "stu_id": "stu_364185",
+        "risk_prob": 0.9934,
+        "logit_drop_top3": 1.8196,
+        "logit_drop_random3": -2.641
+      },
+      {
+        "stu_id": "stu_652292",
+        "risk_prob": 0.5744,
+        "logit_drop_top3": 1.262,
+        "logit_drop_random3": -2.5755
+      },
+      {
+        "stu_id": "stu_624034",
+        "risk_prob": 0.9306,
+        "logit_drop_top3": 0.7537,
+        "logit_drop_random3": -1.8235
+      },
+      {
+        "stu_id": "stu_600748",
+        "risk_prob": 0.9995,
+        "logit_drop_top3": 1.2945,
+        "logit_drop_random3": -0.1797
+      },
+      {
+        "stu_id": "stu_488908",
+        "risk_prob": 0.9901,
+        "logit_drop_top3": 1.776,
+        "logit_drop_random3": -1.7841
+      },
+      {
+        "stu_id": "stu_203707",
+        "risk_prob": 0.9728,
+        "logit_drop_top3": 2.1321,
+        "logit_drop_random3": -1.3394
+      },
+      {
+        "stu_id": "stu_553556",
+        "risk_prob": 0.995,
+        "logit_drop_top3": 1.4787,
+        "logit_drop_random3": -2.2565
+      },
+      {
+        "stu_id": "stu_591671",
+        "risk_prob": 0.8485,
+        "logit_drop_top3": 0.1091,
+        "logit_drop_random3": -1.6445
+      },
+      {
+        "stu_id": "stu_533997",
+        "risk_prob": 0.8699,
+        "logit_drop_top3": 3.9535,
+        "logit_drop_random3": 0.1079
+      },
+      {
+        "stu_id": "stu_534908",
+        "risk_prob": 0.9858,
+        "logit_drop_top3": 4.9264,
+        "logit_drop_random3": -2.2324
+      },
+      {
+        "stu_id": "stu_282806",
+        "risk_prob": 0.5893,
+        "logit_drop_top3": 0.4601,
+        "logit_drop_random3": -0.7353
+      },
+      {
+        "stu_id": "stu_622315",
+        "risk_prob": 0.834,
+        "logit_drop_top3": 1.0819,
+        "logit_drop_random3": -0.1709
+      },
+      {
+        "stu_id": "stu_693273",
+        "risk_prob": 0.6533,
+        "logit_drop_top3": 2.1679,
+        "logit_drop_random3": 0.9067
+      },
+      {
+        "stu_id": "stu_590543",
+        "risk_prob": 0.9984,
+        "logit_drop_top3": 3.7739,
+        "logit_drop_random3": -0.3254
+      },
+      {
+        "stu_id": "stu_633052",
+        "risk_prob": 0.9991,
+        "logit_drop_top3": 1.2837,
+        "logit_drop_random3": null
+      },
+      {
+        "stu_id": "stu_48635",
+        "risk_prob": 0.8498,
+        "logit_drop_top3": 4.5886,
+        "logit_drop_random3": -0.6483
+      },
+      {
+        "stu_id": "stu_2076177",
+        "risk_prob": 0.823,
+        "logit_drop_top3": 0.7758,
+        "logit_drop_random3": -3.1425
+      },
+      {
+        "stu_id": "stu_516214",
+        "risk_prob": 0.9902,
+        "logit_drop_top3": 2.1335,
+        "logit_drop_random3": -1.6979
+      },
+      {
+        "stu_id": "stu_519491",
+        "risk_prob": 0.9887,
+        "logit_drop_top3": 1.1964,
+        "logit_drop_random3": -2.5617
+      },
+      {
+        "stu_id": "stu_2603027",
+        "risk_prob": 0.7446,
+        "logit_drop_top3": 3.3073,
+        "logit_drop_random3": -1.607
+      },
+      {
+        "stu_id": "stu_634193",
+        "risk_prob": 0.851,
+        "logit_drop_top3": 4.1885,
+        "logit_drop_random3": -0.8775
+      },
+      {
+        "stu_id": "stu_585464",
+        "risk_prob": 0.9579,
+        "logit_drop_top3": 4.6295,
+        "logit_drop_random3": -0.6902
+      },
+      {
+        "stu_id": "stu_600037",
+        "risk_prob": 0.9998,
+        "logit_drop_top3": 2.4103,
+        "logit_drop_random3": 0.2528
+      },
+      {
+        "stu_id": "stu_2544678",
+        "risk_prob": 0.9672,
+        "logit_drop_top3": 2.7019,
+        "logit_drop_random3": -1.528
+      },
+      {
+        "stu_id": "stu_563990",
+        "risk_prob": 0.9437,
+        "logit_drop_top3": 1.1787,
+        "logit_drop_random3": -0.9954
+      },
+      {
+        "stu_id": "stu_2668106",
+        "risk_prob": 0.6537,
+        "logit_drop_top3": 3.3163,
+        "logit_drop_random3": 0.1826
+      },
+      {
+        "stu_id": "stu_2034533",
+        "risk_prob": 0.9977,
+        "logit_drop_top3": 2.5426,
+        "logit_drop_random3": -0.3627
+      },
+      {
+        "stu_id": "stu_605545",
+        "risk_prob": 0.9686,
+        "logit_drop_top3": 4.4202,
+        "logit_drop_random3": -0.108
+      },
+      {
+        "stu_id": "stu_1930146",
+        "risk_prob": 0.8247,
+        "logit_drop_top3": 1.5281,
+        "logit_drop_random3": -0.8801
+      },
+      {
+        "stu_id": "stu_513172",
+        "risk_prob": 0.716,
+        "logit_drop_top3": 3.8979,
+        "logit_drop_random3": -1.1252
+      },
+      {
+        "stu_id": "stu_601655",
+        "risk_prob": 0.5896,
+        "logit_drop_top3": 0.9626,
+        "logit_drop_random3": 0.0428
+      },
+      {
+        "stu_id": "stu_604502",
+        "risk_prob": 0.5465,
+        "logit_drop_top3": 1.0603,
+        "logit_drop_random3": -0.649
+      },
+      {
+        "stu_id": "stu_617416",
+        "risk_prob": 0.7814,
+        "logit_drop_top3": 1.9056,
+        "logit_drop_random3": -1.4842
+      },
+      {
+        "stu_id": "stu_506980",
+        "risk_prob": 0.9826,
+        "logit_drop_top3": 2.0433,
+        "logit_drop_random3": -1.1506
+      },
+      {
+        "stu_id": "stu_597308",
+        "risk_prob": 0.9992,
+        "logit_drop_top3": 2.2258,
+        "logit_drop_random3": -0.19
+      },
+      {
+        "stu_id": "stu_674965",
+        "risk_prob": 0.7953,
+        "logit_drop_top3": 1.4108,
+        "logit_drop_random3": -0.6549
+      },
+      {
+        "stu_id": "stu_507577",
+        "risk_prob": 0.9828,
+        "logit_drop_top3": 1.8852,
+        "logit_drop_random3": -0.7139
+      }
+    ]
+  },
+  "students": [
+    {
+      "stu_id": "stu_681393",
+      "risk_prob": 0.9999,
+      "drop_when_removing_top3": 0.0001,
+      "logit_drop_when_removing_top3": 0.7028,
+      "logit_drop_random3": 0.3025,
+      "top_edges": [
+        [
+          "所在课程",
+          "crs_FFF",
+          0.2347
+        ],
+        [
+          "使用过的资源",
+          "res_none",
+          0.2162
+        ],
+        [
+          "使用过的资源",
+          "res_882537",
+          0.1661
+        ],
+        [
+          "上课环节",
+          "cs_FFF_2014J_wk6",
+          0.1322
+        ],
+        [
+          "上课环节",
+          "cs_FFF_2014J_wk8",
+          0.1028
+        ]
+      ]
+    },
+    {
+      "stu_id": "stu_677643",
+      "risk_prob": 0.9999,
+      "drop_when_removing_top3": 0.0003,
+      "logit_drop_when_removing_top3": 1.2296,
+      "logit_drop_random3": 0.26,
+      "top_edges": [
+        [
+          "使用过的资源",
+          "res_none",
+          0.3903
+        ],
+        [
+          "所在课程",
+          "crs_FFF",
+          0.2307
+        ],
+        [
+          "上课环节",
+          "cs_FFF_2014J_wk11",
+          0.1362
+        ],
+        [
+          "上课环节",
+          "cs_FFF_2014J_wk5",
+          0.135
+        ],
+        [
+          "上课环节",
+          "cs_FFF_2014J_wk4",
+          0.0567
+        ]
+      ]
+    },
+    {
+      "stu_id": "stu_592233",
+      "risk_prob": 0.9998,
+      "drop_when_removing_top3": 0.0002,
+      "logit_drop_when_removing_top3": 0.925,
+      "logit_drop_random3": 0.305,
+      "top_edges": [
+        [
+          "使用过的资源",
+          "res_none",
+          0.3851
+        ],
+        [
+          "所在课程",
+          "crs_FFF",
+          0.2283
+        ],
+        [
+          "上课环节",
+          "cs_FFF_2014J_wk2",
+          0.0969
+        ],
+        [
+          "上课环节",
+          "cs_FFF_2014J_wk11",
+          0.0889
+        ],
+        [
+          "上课环节",
+          "cs_FFF_2014J_wk1",
+          0.0842
+        ]
+      ]
+    },
+    {
+      "stu_id": "stu_654620",
+      "risk_prob": 0.9999,
+      "drop_when_removing_top3": 0.0002,
+      "logit_drop_when_removing_top3": 0.7797,
+      "logit_drop_random3": 0.4521,
+      "top_edges": [
+        [
+          "所在课程",
+          "crs_FFF",
+          0.255
+        ],
+        [
+          "使用过的资源",
+          "res_882537",
+          0.1871
+        ],
+        [
+          "上课环节",
+          "cs_FFF_2014J_wk5",
+          0.1644
+        ],
+        [
+          "使用过的资源",
+          "res_882545",
+          0.1471
+        ],
+        [
+          "上课环节",
+          "cs_FFF_2014J_wk6",
+          0.122
+        ]
+      ]
+    },
+    {
+      "stu_id": "stu_597391",
+      "risk_prob": 0.9998,
+      "drop_when_removing_top3": 0.0005,
+      "logit_drop_when_removing_top3": 1.3883,
+      "logit_drop_random3": 0.282,
+      "top_edges": [
+        [
+          "上课环节",
+          "cs_FFF_2014J_wk11",
+          0.3481
+        ],
+        [
+          "所在课程",
+          "crs_FFF",
+          0.2452
+        ],
+        [
+          "使用过的资源",
+          "res_none",
+          0.2138
+        ],
+        [
+          "使用过的资源",
+          "res_882537",
+          0.1905
+        ],
+        [
+          "上课环节",
+          "cs_FFF_2014J_wk0",
+          0.0287
+        ]
+      ]
+    },
+    {
+      "stu_id": "stu_689533",
+      "risk_prob": 0.9998,
+      "drop_when_removing_top3": 0.0003,
+      "logit_drop_when_removing_top3": 1.0308,
+      "logit_drop_random3": 0.2791,
+      "top_edges": [
+        [
+          "使用过的资源",
+          "res_none",
+          0.382
+        ],
+        [
+          "所在课程",
+          "crs_FFF",
+          0.2454
+        ],
+        [
+          "上课环节",
+          "cs_FFF_2014J_wk5",
+          0.1157
+        ],
+        [
+          "上课环节",
+          "cs_FFF_2014J_wk11",
+          0.1003
+        ],
+        [
+          "上课环节",
+          "cs_FFF_2014J_wk8",
+          0.0985
+        ]
+      ]
+    },
+    {
+      "stu_id": "stu_641866",
+      "risk_prob": 0.9998,
+      "drop_when_removing_top3": 0.0004,
+      "logit_drop_when_removing_top3": 1.1998,
+      "logit_drop_random3": 0.2252,
+      "top_edges": [
+        [
+          "上课环节",
+          "cs_FFF_2014J_wk11",
+          0.3051
+        ],
+        [
+          "所在课程",
+          "crs_FFF",
+          0.2377
+        ],
+        [
+          "使用过的资源",
+          "res_none",
+          0.1726
+        ],
+        [
+          "使用过的资源",
+          "res_882537",
+          0.1458
+        ],
+        [
+          "上课环节",
+          "cs_FFF_2014J_wk3",
+          0.0702
+        ]
+      ]
+    },
+    {
+      "stu_id": "stu_678346",
+      "risk_prob": 0.9999,
+      "drop_when_removing_top3": 0.0002,
+      "logit_drop_when_removing_top3": 0.7695,
+      "logit_drop_random3": 0.3553,
+      "top_edges": [
+        [
+          "所在课程",
+          "crs_FFF",
+          0.2533
+        ],
+        [
+          "使用过的资源",
+          "res_none",
+          0.2078
+        ],
+        [
+          "使用过的资源",
+          "res_882537",
+          0.1994
+        ],
+        [
+          "上课环节",
+          "cs_FFF_2014J_wk5",
+          0.0917
+        ],
+        [
+          "上课环节",
+          "cs_FFF_2014J_wk9",
+          0.0642
+        ]
+      ]
+    },
+    {
+      "stu_id": "stu_520265",
+      "risk_prob": 0.9998,
+      "drop_when_removing_top3": 0.0011,
+      "logit_drop_when_removing_top3": 2.0211,
+      "logit_drop_random3": 0.1118,
+      "top_edges": [
+        [
+          "上课环节",
+          "cs_FFF_2014J_wk6",
+          0.4108
+        ],
+        [
+          "使用过的资源",
+          "res_none",
+          0.41
+        ],
+        [
+          "所在课程",
+          "crs_FFF",
+          0.2425
+        ],
+        [
+          "上课环节",
+          "cs_FFF_2014J_wk10",
+          0.0682
+        ],
+        [
+          "上课环节",
+          "cs_FFF_2014J_wk7",
+          0.0133
+        ]
+      ]
+    },
+    {
+      "stu_id": "stu_595673",
+      "risk_prob": 0.9998,
+      "drop_when_removing_top3": 0.0004,
+      "logit_drop_when_removing_top3": 1.2272,
+      "logit_drop_random3": 0.2159,
+      "top_edges": [
+        [
+          "使用过的资源",
+          "res_none",
+          0.4062
+        ],
+        [
+          "所在课程",
+          "crs_FFF",
+          0.2598
+        ],
+        [
+          "上课环节",
+          "cs_FFF_2014J_wk11",
+          0.1192
+        ],
+        [
+          "上课环节",
+          "cs_FFF_2014J_wk8",
+          0.1009
+        ],
+        [
+          "上课环节",
+          "cs_FFF_2014J_wk10",
+          0.0556
+        ]
+      ]
+    },
+    {
+      "stu_id": "stu_116541",
+      "risk_prob": 0.0813,
+      "drop_when_removing_top3": 0.0552,
+      "logit_drop_when_removing_top3": 1.1927,
+      "logit_drop_random3": -0.0055,
+      "top_edges": [
+        [
+          "所在课程",
+          "crs_AAA",
+          0.36
+        ],
+        [
+          "考核的知识点",
+          "kp_AAA_04",
+          0.1756
+        ],
+        [
+          "考核的知识点",
+          "kp_AAA_03",
+          0.1741
+        ],
+        [
+          "同堂同学",
+          "stu_376439",
+          0.0776
+        ],
+        [
+          "同堂同学",
+          "stu_1889511",
+          0.0738
+        ]
+      ]
+    },
+    {
+      "stu_id": "stu_610188",
+      "risk_prob": 0.0298,
+      "drop_when_removing_top3": 0.015,
+      "logit_drop_when_removing_top3": 0.7114,
+      "logit_drop_random3": -0.0444,
+      "top_edges": [
+        [
+          "考核的知识点",
+          "kp_EEE_02",
+          0.1054
+        ],
+        [
+          "考核的知识点",
+          "kp_EEE_03",
+          0.0922
+        ],
+        [
+          "所在课程",
+          "crs_EEE",
+          0.0558
+        ],
+        [
+          "使用过的资源",
+          "res_551071",
+          0.0496
+        ],
+        [
+          "使用过的资源",
+          "res_551065",
+          0.0289
+        ]
+      ]
+    }
+  ]
+}

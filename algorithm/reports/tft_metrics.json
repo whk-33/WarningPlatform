@@ -1,0 +1,130 @@
+{
+  "model": "M2_TFT_lite",
+  "processed_dir": "D:\\WarningPlatform\\algorithm\\data\\oulad\\processed_full_demo",
+  "n_samples": 32593,
+  "T": 16,
+  "results": {
+    "per_week": {
+      "w4_val": {
+        "n": 4009,
+        "pos_rate": 0.4303,
+        "auc": 0.7739,
+        "pr_auc": 0.7366,
+        "recall_at_10pct": 0.2052,
+        "precision_at_10pct": 0.8828,
+        "brier": 0.1886
+      },
+      "w8_val": {
+        "n": 3805,
+        "pos_rate": 0.3997,
+        "auc": 0.8179,
+        "pr_auc": 0.7709,
+        "recall_at_10pct": 0.2334,
+        "precision_at_10pct": 0.9342,
+        "brier": 0.165
+      },
+      "w12_val": {
+        "n": 3666,
+        "pos_rate": 0.377,
+        "auc": 0.8341,
+        "pr_auc": 0.7804,
+        "recall_at_10pct": 0.2496,
+        "precision_at_10pct": 0.9401,
+        "brier": 0.1538
+      },
+      "w14_val": {
+        "n": 3590,
+        "pos_rate": 0.3638,
+        "auc": 0.8513,
+        "pr_auc": 0.7926,
+        "recall_at_10pct": 0.2603,
+        "precision_at_10pct": 0.9471,
+        "brier": 0.1449
+      },
+      "w4_test": {
+        "n": 3994,
+        "pos_rate": 0.4099,
+        "auc": 0.7544,
+        "pr_auc": 0.6974,
+        "recall_at_10pct": 0.2077,
+        "precision_at_10pct": 0.8521,
+        "brier": 0.1941
+      },
+      "w8_test": {
+        "n": 3834,
+        "pos_rate": 0.3852,
+        "auc": 0.8062,
+        "pr_auc": 0.7576,
+        "recall_at_10pct": 0.2431,
+        "precision_at_10pct": 0.9373,
+        "brier": 0.1674
+      },
+      "w12_test": {
+        "n": 3695,
+        "pos_rate": 0.3621,
+        "auc": 0.8309,
+        "pr_auc": 0.7759,
+        "recall_at_10pct": 0.2646,
+        "precision_at_10pct": 0.9568,
+        "brier": 0.1535
+      },
+      "w14_test": {
+        "n": 3618,
+        "pos_rate": 0.3485,
+        "auc": 0.8523,
+        "pr_auc": 0.793,
+        "recall_at_10pct": 0.2752,
+        "precision_at_10pct": 0.9586,
+        "brier": 0.1395
+      }
+    },
+    "all_steps": {
+      "val": {
+        "n": 60824,
+        "pos_rate": 0.3992,
+        "auc": 0.8083,
+        "pr_auc": 0.75,
+        "recall_at_10pct": 0.2266,
+        "precision_at_10pct": 0.9046,
+        "brier": 0.1714
+      },
+      "test": {
+        "n": 60896,
+        "pos_rate": 0.3807,
+        "auc": 0.7976,
+        "pr_auc": 0.7296,
+        "recall_at_10pct": 0.2345,
+        "precision_at_10pct": 0.8928,
+        "brier": 0.1733
+      }
+    }
+  },
+  "variable_weights": {
+    "static": {
+      "性别": 0.1,
+      "入学成绩": 0.0928,
+      "历史重修次数": 0.0886,
+      "特殊情况标记": 0.0825,
+      "课程学分": 0.1553,
+      "学历：A Level": 0.066,
+      "学历：高等教育": 0.085,
+      "学历：低于 A Level": 0.1189,
+      "学历：无正式学历": 0.1224,
+      "学历：研究生": 0.0884
+    },
+    "observed": {
+      "出勤率": 0.2232,
+      "课件点击数": 0.166,
+      "累计缺勤次数": 0.1232,
+      "测验正确率": 0.0595,
+      "作业平均分": 0.3108,
+      "作业迟交天数": 0.1173
+    },
+    "known_future": {
+      "学期进度": 0.4048,
+      "是否学期后半段": 0.4348,
+      "距期末周数": 0.1604
+    }
+  },
+  "note": "轻量版 TFT：变量选择+LSTM+静态富化+跳连；二元标签用 masked BCE，无分位数头。"
+}
