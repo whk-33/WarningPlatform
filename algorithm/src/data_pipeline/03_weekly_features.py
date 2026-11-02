@@ -18,6 +18,7 @@ TFT 三类特征：
   observed      —— 时变（累计到本周）：出勤率、PPT 点击、视频完成率、随堂小测正确率、作业分数/迟交天数、缺勤次数
   known_future  —— 可预知：本周是学期第几周、是否后半学期、距离期末剩余周数
 """
+import os
 from pathlib import Path
 
 import numpy as np
@@ -30,8 +31,9 @@ with open("algorithm/configs/schema.yaml", encoding="utf-8") as _f:
 
 
 RAW = Path("algorithm/data/raw")
-INTERIM = Path("algorithm/data/interim")
-OUT = Path("algorithm/data/processed")
+# 允许切换到真实数据目录（如 OULAD 适配产物），默认仍用 mock
+INTERIM = Path(os.getenv("WP_INTERIM", "algorithm/data/interim"))
+OUT = Path(os.getenv("WP_PROCESSED", "algorithm/data/processed"))
 OUT.mkdir(parents=True, exist_ok=True)
 
 # ── 常量 ────────────────────────────────────────────────────────────────────

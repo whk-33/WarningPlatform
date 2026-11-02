@@ -22,13 +22,14 @@ DKT 序列格式（每行 = 学生×课×学期）：
 """
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-INTERIM = Path("algorithm/data/interim")
-OUT = Path("algorithm/data/processed")
+INTERIM = Path(os.getenv("WP_INTERIM", "algorithm/data/interim"))
+OUT = Path(os.getenv("WP_PROCESSED", "algorithm/data/processed"))
 OUT.mkdir(parents=True, exist_ok=True)
 
 # ── 先确认 quiz_item 长啥样 ────────────────────────────────────────────────
@@ -73,6 +74,15 @@ df_kps = pd.concat([
 ], ignore_index=True)
 
 # 加连续 kp_idx（DKT embedding 层需要 0..N-1）
+# 若存在演示用中文名映射（11_enrich_demo_fields.py 产出），用中文名替换 kp_id
+_kp_map_path = INTERIM / "kp_name_map.parquet"
+if _kp_map_path.exists():
+    _names = pd.read_parquet(_kp_map_path)[["kp_id", "name_cn"]]
+    df_kps = df_kps.merge(_names, on="kp_id", how="left")
+    df_kps["name"] = df_kps["name_cn"].fillna(df_kps["name"])
+    df_kps = df_kps.drop(columns=["name_cn"])
+    print(f"  （已应用知识点中文名映射: {len(_names)} 条）")
+
 df_kps = df_kps.reset_index(drop=True).reset_index().rename(
     columns={"index": "kp_idx"})
 df_kps[["kp_idx", "kp_id", "course_code",

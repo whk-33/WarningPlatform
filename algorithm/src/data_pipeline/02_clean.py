@@ -126,6 +126,11 @@ def clean(tables: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
     final["stu_id"] = final["stu_num"].astype(str).map(id_map["num"])
     final["is_positive"] = final["status"].isin(
         SCHEMA["label"]["positive_statuses"]).astype(int)
+    # 三级风险（口径见 schema.yaml 的 label.risk_level）：0=低 1=中 2=高
+    _risk_map = {st: int(lv) for lv, sts in SCHEMA["label"]["risk_level"].items()
+                 for st in sts}
+    final["risk_level"] = final["status"].map(_risk_map).fillna(0).astype("int8")
+    final["risk_level_name"] = final["risk_level"].map({0: "低", 1: "中", 2: "高"})
     out["final_result"] = final
 
     out["courses"] = tables["courses"]
