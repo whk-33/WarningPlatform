@@ -1,0 +1,3 @@
+﻿src,dst,edge_type
+crs_AAA,crs_BBB,course_prereq
+crs_BBB,crs_EEE,course_prereq

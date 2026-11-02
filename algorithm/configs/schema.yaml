@@ -1,0 +1,66 @@
+# ========== 标签口径 ==========
+label:
+  positive_statuses: ['不合格', '缺考', '退学', '休学', '学业警示']
+  risk_binary:
+    rule: "status in ['不合格', '缺考', '退学', '休学', '学业警示'] => 1"
+  risk_level:
+    0: ['优秀', '良好', '合格']
+    1: ['不合格', '缺考']
+    2: ['退学', '休学', '学业警示']
+  deepsurv_event:
+    rule: "(event=1, time=risk_event_time)"
+    risk_signals:
+      - "退学/休学日期"
+      - "首次考核不及格周次"
+      - "连续 2 周出勤率 < 50%"
+
+# ========== 出勤三档 ==========
+attendance:
+  status_values: [attended, attended_leave, absent]
+  leave_as_effective: true
+
+# ========== ID 前缀 ==========
+id_prefix:
+  student: stu_
+  course: crs_
+  class_session: cs_
+  knowledge_point: kp_
+  resource: res_
+  assessment: asm_
+
+# ========== 分析主体 ==========
+subject_grain: "student x course x semester"
+
+# ========== Mock 数据参数 ==========
+mock:
+  seed: 42
+  n_students: 200
+  n_positive: 50
+  weeks_per_sem: 16
+  courses:
+    - {code: AAA, name: 高等数学, credits: 4, elective: false}
+    - {code: BBB, name: 线性代数, credits: 3, elective: false, prereq: AAA}
+    - {code: CCC, name: 大学英语, credits: 3, elective: false}
+    - {code: DDD, name: Python编程, credits: 2, elective: true}
+    - {code: EEE, name: 数据结构, credits: 4, elective: false, prereq: BBB}
+  semesters: ['2024F', '2025S']
+  calendar:
+    "2024F": "2024-09-02"
+    "2025S": "2025-02-24"
+  # 信号注入：正例学生出勤率均值，负例均值
+  attendance_signal: {positive_mean: 0.45, negative_mean: 0.85}
+  # 随堂小测未打知识点标签的比例
+  quiz_kp_missing_rate: 0.15
+
+# ========== 二期真实数据适配（占位，真实数据到位后填） ==========
+real_data_adaptation:
+  sources:
+    student_info: "data/real/student_info.csv"
+    registration: "data/real/registration.csv"
+    assessment_config: "data/real/assessment_config.csv"
+    student_assessment: "data/real/student_assessment.csv"
+    platform_log: "data/real/platform_behavior_log.csv"
+    quiz_item: "data/real/quiz_item_responses.csv"
+    final_result: "data/real/final_result.csv"
+    calendar: "data/real/academic_calendar.csv"
+  field_mapping: {}

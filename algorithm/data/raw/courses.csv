@@ -1,0 +1,6 @@
+﻿code,name,credits,elective,prereq
+AAA,高等数学,4,False,
+BBB,线性代数,3,False,AAA
+CCC,大学英语,3,False,
+DDD,Python编程,2,True,
+EEE,数据结构,4,False,BBB

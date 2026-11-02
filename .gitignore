@@ -42,8 +42,9 @@ build/
 Thumbs.db
 desktop.ini
 
-# ========== 本地工具/助手缓存（不入库） ==========
+# ========== 本地工具 / 私有笔记（绝不入库） ==========
 .workbuddy/
+_local_notes/
 
 # ========== 后端本地文件 ==========
 .env
@@ -53,5 +54,21 @@ backend/data/
 # ========== 真实数据（不入 git，mock 数据可入） ==========
 # data/real/
 # data/raw_real/
+# data/interim/
+# data/processed/
+algorithm/data/oulad_raw/
+algorithm/data/oulad/
+algorithm/data/public/
 
-# ========== 模型权重（走 Git LFS，此处不忽略） ==========
+# ========== 模型权重 / 训练产物 ==========
+# 大文件虽在 .gitattributes 配了 Git LFS，但本地训练产物默认不入库，避免误提交
+*.pt
+algorithm/data/processed_full_demo/
+algorithm/reports/subgraph/
+
+# ========== pyvis 自动下载的前端库（不应进 git） ==========
+lib/
+*.vis-network*
+
+# ========== 私有实施指南（本地保留） ==========
+docs/阶段一_算法工程师实施指南.md

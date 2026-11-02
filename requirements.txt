@@ -1,0 +1,11 @@
+pandas==2.2.*
+numpy==1.26.*
+pyarrow>=15.0
+networkx>=3.2
+pydantic>=2.6
+matplotlib==3.8.*
+seaborn>=0.13
+jupyter
+pytest>=8.0
+pyyaml>=6.0
+Faker>=24.0
