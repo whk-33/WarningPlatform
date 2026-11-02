@@ -1,29 +1,77 @@
-# Mock 数据可以进 git，真实数据不入
+# ========== Python ==========
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+.eggs/
+
+# ========== 虚拟环境 ==========
+.venv/
+venv/
+env/
+
+# ========== Jupyter ==========
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# ========== Node / 前端 ==========
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+dist/
+build/
+.vite/
+*.local
+
+# ========== IDE / 编辑器 ==========
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ========== 操作系统 ==========
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ========== 本地工具 / 私有笔记（绝不入库） ==========
+.workbuddy/
+_local_notes/
+
+# ========== 后端本地文件 ==========
+.env
+backend/.env
+backend/data/
+
+# ========== 真实数据（不入 git，mock 数据可入） ==========
+# data/real/
+# data/raw_real/
 # data/interim/
 # data/processed/
-*.pt
-__pycache__/
-*.pyc
-*.pyo
-.ipynb_checkpoints/
-.venv/
-env/
-.idea/
-.vscode/
-.DS_Store
-*.log
-
-# pyvis 自动下载的前端库（不应进 git）
-lib/
-*.vis-network*
-
-# 内部实施指南（不推到远程）
-docs/阶段一_算法工程师实施指南.md
-
-# 公开数据集原始文件与适配产物（体积大/有许可，不入库）
 algorithm/data/oulad_raw/
 
 # 本地私有笔记（含阶段性实施指南，不入库）
 _local_notes/
 algorithm/data/oulad/
 algorithm/data/public/
+
+# ========== 模型权重 / 训练产物 ==========
+# 大文件虽在 .gitattributes 配了 Git LFS，但本地训练产物默认不入库，避免误提交
+*.pt
+algorithm/data/processed_full_demo/
+algorithm/reports/subgraph/
+
+# ========== pyvis 自动下载的前端库（不应进 git） ==========
+lib/
+*.vis-network*
+
+# ========== 私有实施指南（本地保留） ==========
+docs/阶段一_算法工程师实施指南.md
