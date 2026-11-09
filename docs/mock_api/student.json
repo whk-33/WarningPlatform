@@ -1,0 +1,438 @@
+{
+  "stu_id": "stu_100621",
+  "semester": "2014B",
+  "weeks": [
+    {
+      "stu_id": "stu_100621",
+      "course_code": "CCC",
+      "semester": "2014B",
+      "week": 0,
+      "risk_prob": 0.4666,
+      "risk_level": 0,
+      "risk_level_name": "低",
+      "pred_event_week": -1,
+      "top_factors": [
+        {
+          "factor": "课件点击数",
+          "value": 26.0,
+          "contrib": 0.486
+        },
+        {
+          "factor": "作业平均分",
+          "value": 0.0,
+          "contrib": 0.42
+        },
+        {
+          "factor": "测验正确率",
+          "value": 0.0,
+          "contrib": 0.093
+        }
+      ]
+    },
+    {
+      "stu_id": "stu_100621",
+      "course_code": "CCC",
+      "semester": "2014B",
+      "week": 1,
+      "risk_prob": 0.4642,
+      "risk_level": 0,
+      "risk_level_name": "低",
+      "pred_event_week": -1,
+      "top_factors": [
+        {
+          "factor": "课件点击数",
+          "value": 26.0,
+          "contrib": 0.486
+        },
+        {
+          "factor": "作业平均分",
+          "value": 0.0,
+          "contrib": 0.42
+        },
+        {
+          "factor": "测验正确率",
+          "value": 0.0,
+          "contrib": 0.093
+        }
+      ]
+    },
+    {
+      "stu_id": "stu_100621",
+      "course_code": "CCC",
+      "semester": "2014B",
+      "week": 2,
+      "risk_prob": 0.5263,
+      "risk_level": 0,
+      "risk_level_name": "低",
+      "pred_event_week": -1,
+      "top_factors": [
+        {
+          "factor": "课件点击数",
+          "value": 26.0,
+          "contrib": 0.486
+        },
+        {
+          "factor": "作业平均分",
+          "value": 0.0,
+          "contrib": 0.42
+        },
+        {
+          "factor": "测验正确率",
+          "value": 0.0,
+          "contrib": 0.093
+        }
+      ]
+    },
+    {
+      "stu_id": "stu_100621",
+      "course_code": "CCC",
+      "semester": "2014B",
+      "week": 3,
+      "risk_prob": 0.613,
+      "risk_level": 0,
+      "risk_level_name": "低",
+      "pred_event_week": -1,
+      "top_factors": [
+        {
+          "factor": "课件点击数",
+          "value": 26.0,
+          "contrib": 0.486
+        },
+        {
+          "factor": "作业平均分",
+          "value": 0.0,
+          "contrib": 0.42
+        },
+        {
+          "factor": "测验正确率",
+          "value": 0.0,
+          "contrib": 0.093
+        }
+      ]
+    },
+    {
+      "stu_id": "stu_100621",
+      "course_code": "CCC",
+      "semester": "2014B",
+      "week": 4,
+      "risk_prob": 0.7962,
+      "risk_level": 1,
+      "risk_level_name": "中",
+      "pred_event_week": -1,
+      "top_factors": [
+        {
+          "factor": "课件点击数",
+          "value": 26.0,
+          "contrib": 0.535
+        },
+        {
+          "factor": "作业平均分",
+          "value": 0.0,
+          "contrib": 0.33
+        },
+        {
+          "factor": "测验正确率",
+          "value": 0.0,
+          "contrib": 0.135
+        }
+      ]
+    },
+    {
+      "stu_id": "stu_100621",
+      "course_code": "CCC",
+      "semester": "2014B",
+      "week": 5,
+      "risk_prob": 0.8938,
+      "risk_level": 1,
+      "risk_level_name": "中",
+      "pred_event_week": -1,
+      "top_factors": [
+        {
+          "factor": "课件点击数",
+          "value": 26.0,
+          "contrib": 0.53
+        },
+        {
+          "factor": "作业平均分",
+          "value": 0.0,
+          "contrib": 0.246
+        },
+        {
+          "factor": "测验正确率",
+          "value": 0.0,
+          "contrib": 0.171
+        }
+      ]
+    },
+    {
+      "stu_id": "stu_100621",
+      "course_code": "CCC",
+      "semester": "2014B",
+      "week": 6,
+      "risk_prob": 1.0,
+      "risk_level": 2,
+      "risk_level_name": "高",
+      "pred_event_week": -1,
+      "top_factors": [
+        {
+          "factor": "课件点击数",
+          "value": 26.0,
+          "contrib": 0.382
+        },
+        {
+          "factor": "出勤率",
+          "value": 0.57,
+          "contrib": 0.325
+        },
+        {
+          "factor": "测验正确率",
+          "value": 0.0,
+          "contrib": 0.156
+        }
+      ]
+    },
+    {
+      "stu_id": "stu_100621",
+      "course_code": "CCC",
+      "semester": "2014B",
+      "week": 7,
+      "risk_prob": 1.0,
+      "risk_level": 2,
+      "risk_level_name": "高",
+      "pred_event_week": -1,
+      "top_factors": [
+        {
+          "factor": "出勤率",
+          "value": 0.5,
+          "contrib": 0.446
+        },
+        {
+          "factor": "课件点击数",
+          "value": 26.0,
+          "contrib": 0.274
+        },
+        {
+          "factor": "测验正确率",
+          "value": 0.0,
+          "contrib": 0.14
+        }
+      ]
+    },
+    {
+      "stu_id": "stu_100621",
+      "course_code": "CCC",
+      "semester": "2014B",
+      "week": 8,
+      "risk_prob": 1.0,
+      "risk_level": 2,
+      "risk_level_name": "高",
+      "pred_event_week": -1,
+      "top_factors": [
+        {
+          "factor": "出勤率",
+          "value": 0.44,
+          "contrib": 0.517
+        },
+        {
+          "factor": "课件点击数",
+          "value": 26.0,
+          "contrib": 0.21
+        },
+        {
+          "factor": "测验正确率",
+          "value": 0.0,
+          "contrib": 0.132
+        }
+      ]
+    },
+    {
+      "stu_id": "stu_100621",
+      "course_code": "CCC",
+      "semester": "2014B",
+      "week": 9,
+      "risk_prob": 1.0,
+      "risk_level": 2,
+      "risk_level_name": "高",
+      "pred_event_week": -1,
+      "top_factors": [
+        {
+          "factor": "出勤率",
+          "value": 0.4,
+          "contrib": 0.565
+        },
+        {
+          "factor": "课件点击数",
+          "value": 26.0,
+          "contrib": 0.166
+        },
+        {
+          "factor": "测验正确率",
+          "value": 0.0,
+          "contrib": 0.13
+        }
+      ]
+    },
+    {
+      "stu_id": "stu_100621",
+      "course_code": "CCC",
+      "semester": "2014B",
+      "week": 10,
+      "risk_prob": 1.0,
+      "risk_level": 2,
+      "risk_level_name": "高",
+      "pred_event_week": -1,
+      "top_factors": [
+        {
+          "factor": "出勤率",
+          "value": 0.36,
+          "contrib": 0.6
+        },
+        {
+          "factor": "课件点击数",
+          "value": 26.0,
+          "contrib": 0.135
+        },
+        {
+          "factor": "测验正确率",
+          "value": 0.0,
+          "contrib": 0.13
+        }
+      ]
+    },
+    {
+      "stu_id": "stu_100621",
+      "course_code": "CCC",
+      "semester": "2014B",
+      "week": 11,
+      "risk_prob": 1.0,
+      "risk_level": 2,
+      "risk_level_name": "高",
+      "pred_event_week": -1,
+      "top_factors": [
+        {
+          "factor": "出勤率",
+          "value": 0.33,
+          "contrib": 0.629
+        },
+        {
+          "factor": "测验正确率",
+          "value": 0.0,
+          "contrib": 0.131
+        },
+        {
+          "factor": "累计缺勤次数",
+          "value": 8.0,
+          "contrib": 0.115
+        }
+      ]
+    },
+    {
+      "stu_id": "stu_100621",
+      "course_code": "CCC",
+      "semester": "2014B",
+      "week": 12,
+      "risk_prob": 1.0,
+      "risk_level": 2,
+      "risk_level_name": "高",
+      "pred_event_week": -1,
+      "top_factors": [
+        {
+          "factor": "出勤率",
+          "value": 0.31,
+          "contrib": 0.652
+        },
+        {
+          "factor": "测验正确率",
+          "value": 0.0,
+          "contrib": 0.134
+        },
+        {
+          "factor": "累计缺勤次数",
+          "value": 9.0,
+          "contrib": 0.112
+        }
+      ]
+    },
+    {
+      "stu_id": "stu_100621",
+      "course_code": "CCC",
+      "semester": "2014B",
+      "week": 13,
+      "risk_prob": 1.0,
+      "risk_level": 2,
+      "risk_level_name": "高",
+      "pred_event_week": -1,
+      "top_factors": [
+        {
+          "factor": "出勤率",
+          "value": 0.29,
+          "contrib": 0.672
+        },
+        {
+          "factor": "测验正确率",
+          "value": 0.0,
+          "contrib": 0.138
+        },
+        {
+          "factor": "累计缺勤次数",
+          "value": 10.0,
+          "contrib": 0.106
+        }
+      ]
+    },
+    {
+      "stu_id": "stu_100621",
+      "course_code": "CCC",
+      "semester": "2014B",
+      "week": 14,
+      "risk_prob": 1.0,
+      "risk_level": 2,
+      "risk_level_name": "高",
+      "pred_event_week": -1,
+      "top_factors": [
+        {
+          "factor": "出勤率",
+          "value": 0.27,
+          "contrib": 0.689
+        },
+        {
+          "factor": "测验正确率",
+          "value": 0.0,
+          "contrib": 0.142
+        },
+        {
+          "factor": "累计缺勤次数",
+          "value": 11.0,
+          "contrib": 0.099
+        }
+      ]
+    },
+    {
+      "stu_id": "stu_100621",
+      "course_code": "CCC",
+      "semester": "2014B",
+      "week": 15,
+      "risk_prob": 1.0,
+      "risk_level": 2,
+      "risk_level_name": "高",
+      "pred_event_week": -1,
+      "top_factors": [
+        {
+          "factor": "出勤率",
+          "value": 0.25,
+          "contrib": 0.704
+        },
+        {
+          "factor": "测验正确率",
+          "value": 0.0,
+          "contrib": 0.147
+        },
+        {
+          "factor": "累计缺勤次数",
+          "value": 12.0,
+          "contrib": 0.091
+        }
+      ]
+    }
+  ]
+}
