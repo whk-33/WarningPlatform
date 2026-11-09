@@ -1,0 +1,23 @@
+{
+  "stu_id": "stu_100621",
+  "course_code": "CCC",
+  "semester": "2014B",
+  "week": 8,
+  "top_factors": [
+    {
+      "factor": "出勤率",
+      "value": 0.44,
+      "contrib": 0.517
+    },
+    {
+      "factor": "课件点击数",
+      "value": 26.0,
+      "contrib": 0.21
+    },
+    {
+      "factor": "测验正确率",
+      "value": 0.0,
+      "contrib": 0.132
+    }
+  ]
+}
