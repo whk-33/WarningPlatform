@@ -44,11 +44,23 @@ def count() -> int:
     return int(row["n"])
 
 
-def sync(students: list[dict], admin_account: str, password: str, limit: int) -> int:
+def sync(
+    students: list[dict],
+    admin_account: str,
+    password: str,
+    limit: int,
+    risk_demo: dict | None = None,
+    risk_demo_account: str = "riskdemo",
+) -> int:
     """把演示账号对齐到当前数据源，返回新建条数。
 
     幂等，且能跟着数据源切换：mock 换成 OULAD 后学生 ID 全变，
     这里会清掉已不存在学生的账号、补上新的，避免"账号登录后查不到数据"。
+
+    `risk_demo`（`RiskRepo.demo_student()` 的结果）不为空时，额外维护一个
+    风险演示账号：学生端要能查到自己这条曲线，而演示学生账号的 stu_id
+    与风险数据里的学生 ID 没有交集，必须单独绑一个。
+    该账号的 stu_id 每次启动按当前风险数据重算，数据源换了会自动改绑。
     """
 
     init_db()
@@ -68,7 +80,8 @@ def sync(students: list[dict], admin_account: str, password: str, limit: int) ->
             for row in conn.execute("SELECT account, stu_id FROM sys_user WHERE role = 'student'")
         }
 
-        stale = [acc for acc in existing if acc not in desired]
+        # 风险演示账号不在 students 里，清理时不能把它当过期账号删掉
+        stale = [acc for acc in existing if acc not in desired and acc != risk_demo_account]
         if stale:
             conn.executemany("DELETE FROM sys_user WHERE account = ?", [(acc,) for acc in stale])
 
@@ -80,6 +93,25 @@ def sync(students: list[dict], admin_account: str, password: str, limit: int) ->
                 (no, hash_password(password), "student", str(stu["stu_id"]), str(stu["student_name"])),
             )
             created += 1
+
+        if risk_demo and risk_demo.get("stu_id"):
+            demo_stu = str(risk_demo["stu_id"])
+            demo_name = f"风险演示学生（{demo_stu}）"
+            row = conn.execute(
+                "SELECT stu_id FROM sys_user WHERE account = ? AND role = 'student'", (risk_demo_account,)
+            ).fetchone()
+            if row is None:
+                conn.execute(
+                    "INSERT INTO sys_user (account, password, role, stu_id, display_name) VALUES (?,?,?,?,?)",
+                    (risk_demo_account, hash_password(password), "student", demo_stu, demo_name),
+                )
+                created += 1
+            elif str(row["stu_id"] or "") != demo_stu:
+                # 数据源切换后学生 ID 会变，这里跟着改绑，否则账号又会查到 404
+                conn.execute(
+                    "UPDATE sys_user SET stu_id = ?, display_name = ? WHERE account = ?",
+                    (demo_stu, demo_name, risk_demo_account),
+                )
 
     return created
 

@@ -367,6 +367,33 @@ class RiskRepo:
 
     # ---------------------------------------------------------------- 元信息
 
+    def demo_student(self) -> dict | None:
+        """挑一个"最适合演示"的学生：曲线周数最多，同周数时风险概率最高。
+
+        mock 下会选中 `stu_100621`（唯一有完整 16 周曲线的学生），
+        换成真实 parquet 后自动变成全量里曲线最完整的学生，不用改代码。
+        只给账号同步用（`users.sync`），不进任何接口响应。
+        """
+
+        if self._df.empty:
+            return None
+        grouped = (
+            self._df.groupby(["stu_id", "semester"])
+            .agg(weeks=("week", "nunique"), peak=("risk_prob", "max"),
+                 course_code=("course_code", "first"))
+            .reset_index()
+            .sort_values(["weeks", "peak"], ascending=[False, False])
+        )
+        if grouped.empty:
+            return None
+        top = grouped.iloc[0]
+        return {
+            "stu_id": str(top["stu_id"]),
+            "semester": str(top["semester"]),
+            "course_code": str(top["course_code"]),
+            "weeks": int(top["weeks"]),
+        }
+
     def info(self) -> dict:
         return {
             "source": self.source,

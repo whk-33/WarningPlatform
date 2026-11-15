@@ -198,3 +198,50 @@ def test_admin_stat_alert_rate_is_real_not_sample(client, admin_headers):
     data = client.get("/api/admin/risk/stat", headers=admin_headers).json()["data"]
     assert data["alert_rate"] < 0.9
     assert data["total"] > 1000
+
+
+# ---------------------------------------------------------------- 风险演示账号
+
+def test_risk_demo_account_can_read_own_curve(client):
+    """学生端要能演示曲线：演示账号 stu_id 与风险数据无交集，靠 riskdemo 账号补上。
+
+    这个账号由 `users.sync` 在启动时绑定到"曲线最完整的学生"（mock 下是 stu_100621）。
+    """
+
+    from app.config import settings
+
+    login = client.post("/api/login/student", json={
+        "student_id": settings.risk_demo_account, "password": settings.demo_password})
+    assert login.status_code == 200, login.text
+
+    body = login.json()["data"]
+    headers = {"Authorization": f"Bearer {body['token']}"}
+
+    resp = client.get(f"/api/risk/student/{body['stu_id']}", headers=headers)
+    assert resp.status_code == 200, resp.text
+
+    data = resp.json()["data"]
+    assert data["week_count"] >= 2      # 至少两点才算一条曲线
+    assert data["partial"] is False
+    assert data["stu_id"] == body["stu_id"]
+
+
+def test_risk_demo_account_survives_resync(client):
+    """再次同步不能把 riskdemo 当成"过期学生账号"删掉，也不能改断它绑定的 stu_id。"""
+
+    from app.config import settings
+    from app.data import users
+    from app.data.repo import get_repo
+    from app.data.risk_repo import get_risk_repo
+
+    repo = get_repo()
+    risk_repo = get_risk_repo()
+    demo = risk_repo.demo_student()
+
+    users.sync(repo.student_accounts(), settings.demo_admin_account,
+               settings.demo_password, settings.demo_student_accounts,
+               risk_demo=demo, risk_demo_account=settings.risk_demo_account)
+
+    row = users.get_by_account(settings.risk_demo_account, "student")
+    assert row is not None, "riskdemo 被当成过期账号删掉了"
+    assert str(row["stu_id"]) == str(demo["stu_id"])
