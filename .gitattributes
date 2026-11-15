@@ -4,7 +4,14 @@
 *.pkl filter=lfs diff=lfs merge=lfs -text
 *.bin filter=lfs diff=lfs merge=lfs -text
 *.h5 filter=lfs diff=lfs merge=lfs -text
-*.parquet filter=lfs diff=lfs merge=lfs -text
 *.zip filter=lfs diff=lfs merge=lfs -text
 *.tar filter=lfs diff=lfs merge=lfs -text
 *.gz filter=lfs diff=lfs merge=lfs -text
+
+# parquet 不走 LFS（2026-11-15）
+# 原因：33 个受跟踪 parquet 合计仅 2.6 MB（最大 1.5 MB），不值得引入 LFS 依赖；
+# 且这些文件当初是以裸二进制提交的，LFS 从未真正生效，导致每次 touch 后
+# git status 永久显示"已修改"（内容其实一模一样）。
+# 只保留 -text：二进制不做行尾转换，避免 CRLF 警告。
+# 真正的大文件（risk_scores.parquet 14 MB）已在 .gitignore 排除，不进仓库。
+*.parquet -text
