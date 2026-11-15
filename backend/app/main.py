@@ -62,15 +62,26 @@ async def _handle_unexpected(request: Request, exc: Exception):
 def _startup() -> None:
     repo = get_repo()
     users.init_db()
+
+    # 风险演示账号绑定的学生（数据没就绪不该拖挂启动，降级为不创建）
+    try:
+        risk_demo = get_risk_repo().demo_student()
+    except Exception as exc:  # noqa: BLE001 启动阶段任何异常都不该让服务起不来
+        risk_demo = None
+        logging.getLogger("uvicorn").warning("风险数据未就绪，跳过风险演示账号：%s", exc)
+
     created = users.sync(
         repo.student_accounts(),
         settings.demo_admin_account,
         settings.demo_password,
         settings.demo_student_accounts,
+        risk_demo=risk_demo,
+        risk_demo_account=settings.risk_demo_account,
     )
     logging.getLogger("uvicorn").info(
-        "数据源=%s 学期=%s 学生=%d 账号同步新增=%d",
+        "数据源=%s 学期=%s 学生=%d 账号同步新增=%d 风险演示账号=%s",
         repo.source, repo.current_semester, len(repo.students), created,
+        f"{settings.risk_demo_account}->{risk_demo['stu_id']}" if risk_demo else "未创建",
     )
 
 

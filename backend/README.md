@@ -30,6 +30,7 @@ python -m uvicorn app.main:app --reload --port 8000
 |---|---|---|
 | 管理员 | `admin` | 密码见 `.env.example` 的 `WP_DEMO_PASSWORD` 默认值 |
 | 学生 | 学号，如 `20220100` | 共 29 个，取风险最高的那批学生 |
+| 风险演示 | `riskdemo` | 启动时自动绑到风险数据里**曲线最完整**的学生（mock 下是 `stu_100621`，16 周齐全）。学生端要演示风险曲线必须用这个账号——普通演示学生的 `stu_id` 与风险数据无交集 |
 
 密码统一为同一个初始值，演示环境够用，**上线前必须改**。
 
@@ -208,6 +209,7 @@ export function getRiskStat(params) {
 | `WP_DEMO_ADMIN` | `admin` | 管理员账号名 |
 | `WP_DEMO_ACCOUNTS` | 29 | 自动创建的学生账号数 |
 | `WP_DEMO_PASSWORD` | 见 `.env.example` | 演示账号初始密码 |
+| `WP_RISK_DEMO_ACCOUNT` | `riskdemo` | 风险演示账号名（绑到曲线最完整的学生） |
 | `WP_DEBUG` | true | 调试模式 |
 
 ## 已知限制

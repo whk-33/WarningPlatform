@@ -82,6 +82,10 @@ class Settings:
     demo_password = os.getenv("WP_DEMO_PASSWORD", "wp123456")
     demo_student_accounts = int(os.getenv("WP_DEMO_ACCOUNTS", "29"))
     demo_admin_account = os.getenv("WP_DEMO_ADMIN", "admin")
+    # 风险演示账号（阶段四）：绑定到风险数据里曲线最完整的学生。
+    # 演示学生账号来自 200 人演示集，与 risk_scores / mock 的 OULAD 学生 ID 无交集，
+    # 没有这个账号时学生端风险页必然 404，只能靠管理员 token 联调。
+    risk_demo_account = os.getenv("WP_RISK_DEMO_ACCOUNT", "riskdemo")
 
 
 settings = Settings()
