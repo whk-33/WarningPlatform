@@ -41,6 +41,20 @@ class Settings:
         PROJECT_ROOT / "algorithm" / "data" / "interim",
     ]
 
+    # 阶段四风险分表：risk_scores.parquet 所在目录，按契约探测顺序
+    # WP_PROCESSED -> processed_full_demo -> processed_demo
+    processed_candidates = [
+        _env_path(
+            "WP_PROCESSED",
+            PROJECT_ROOT / "algorithm" / "data" / "oulad" / "processed_full_demo",
+        ),
+        PROJECT_ROOT / "algorithm" / "data" / "oulad" / "processed_full_demo",
+        PROJECT_ROOT / "algorithm" / "data" / "oulad" / "processed_demo",
+    ]
+
+    # risk_scores.parquet 不存在时，用算法侧导出的 mock 数据包兜底（docs/mock_api/*.json）
+    mock_api_dir = _env_path("WP_MOCK_API", PROJECT_ROOT / "docs" / "mock_api")
+
     # 按优先级探测：演示增强层（graph_api 5MB）-> 适配产物 -> mock；
     # 最后才回退到 graph_nx.json（真实数据下约 100MB，启动解析慢且只用到 student/course）
     graph_candidates = [

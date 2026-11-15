@@ -12,11 +12,12 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import admin, auth, student
+from app.api import admin, auth, risk, student
 from app.config import settings
 from app.core.response import ApiError, fail, ok
 from app.data import users
 from app.data.repo import get_repo
+from app.data.risk_repo import get_risk_repo
 
 app = FastAPI(
     title=settings.app_name,
@@ -76,21 +77,26 @@ def _startup() -> None:
 app.include_router(auth.router)
 app.include_router(admin.router)
 app.include_router(student.router)
+app.include_router(risk.router)
+app.include_router(risk.admin_router)
 
 
 @app.get("/api/health", tags=["meta"], summary="健康检查与数据源信息")
 def health():
     repo = get_repo()
+    risk_repo = get_risk_repo()
     return ok({
         "status": "ok",
         "version": settings.version,
         "data_source": repo.source,           # parquet = 真实算法产物；demo = 内置演示数据
+        "risk_source": risk_repo.source,      # 阶段四风险分：parquet / mock / none
         "current_semester": repo.current_semester,
         "semesters": repo.semesters,
         "students": int(len(repo.students)),
         "courses": int(len(repo.courses)),
         "accounts": int(users.count()),
         "behaviour_metrics_is_proxy": "platform_log" not in repo.raw,
+        "risk": risk_repo.info(),
     })
 
 
