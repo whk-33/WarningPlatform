@@ -58,6 +58,33 @@ export function getStudentWarnList(params) {
   return request.get('/student/warn/list', { params })
 }
 
+/* ---------------- 阶段四 · 风险（与上面 15 个并行，不替换） ---------------- */
+
+/** 16 周曲线：一次拿全，别循环调 */
+export function getRiskCurve(stuId, params) {
+  return request.get(`/risk/student/${stuId}`, { params })
+}
+
+/** 单周风险（含该周 top_factors） */
+export function getRiskWeekly(params) {
+  return request.get('/risk/weekly', { params })
+}
+
+/** 单周归因 top3，已按 contrib 降序 */
+export function getRiskFactors(params) {
+  return request.get('/risk/factors', { params })
+}
+
+/** 本周风险榜（管理员）：返回 { items, total, page, size } */
+export function getAdminRiskList(params) {
+  return request.get('/admin/risk/list', { params })
+}
+
+/** 等级分布 + 预警率（管理员）：mock 下用 list_available 当翻页上限 */
+export function getAdminRiskStat(params) {
+  return request.get('/admin/risk/stat', { params })
+}
+
 /* ---------------- 公共 ---------------- */
 
 export function getSemesters() {

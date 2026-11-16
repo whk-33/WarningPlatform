@@ -1,7 +1,9 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import * as echarts from 'echarts'
+import RiskCurve from '../../components/RiskCurve.vue'
 import { getSemesters, getStudentHomeInfo, getStudentSuggest, getStudentWarnList } from '../../api'
+import { getUser } from '../../utils/auth'
 import { fmtPercent, fmtScore, riskType } from '../../utils/format'
 
 const loading = ref(false)
@@ -12,6 +14,9 @@ const semesters = ref([])
 const semester = ref('')
 const chartRef = ref(null)
 let chart = null
+
+/** 风险接口按 stu_id 查（如 stu_100621），从登录响应里带下来，不要写死 */
+const stuId = computed(() => info.value.stu_id || getUser().stu_id || '')
 
 const trendSourceText = computed(() =>
   info.value.trend_source === 'platform_log' ? '来源：平台真实行为日志' : '来源：按当前指标估算的示意曲线'
@@ -151,6 +156,17 @@ onBeforeUnmount(() => {
           </div>
         </el-col>
       </el-row>
+    </el-card>
+
+    <el-card shadow="never">
+      <template #header>
+        <div class="card-head">
+          <span>本学期风险预测曲线</span>
+          <span class="muted">按周滚动预测，共 16 周 · 等级口径：低 / 中 / 高</span>
+        </div>
+      </template>
+      <RiskCurve v-if="stuId" :stu-id="stuId" :semester="info.semester || semester" :height="260" />
+      <el-empty v-else description="暂无风险数据" :image-size="60" />
     </el-card>
 
     <el-row :gutter="16">
