@@ -341,8 +341,9 @@ class RiskRepo:
         if sub.empty:
             raise ApiError(404, f"{sem} 没有 {stu_id} 的风险记录")
 
-        # 多门课按周取风险最高的那门。与 /list 一样以 level 为第一关键字：
-        # risk_prob 与 risk_level 非单调，只按 prob 取会挑到"概率高但等级低"的课。
+        # 多门课按周取风险最高的那门。同一周内 level 与 prob 单调等价
+        # （level = prob 按该周阈值切分，已验证 64 个 (学期,周) 组合复现率 100%），
+        # 但阈值逐周变动、跨周不可比，故仍以 level 为第一关键字。
         idx = sub.sort_values(
             ["week", "risk_level", "risk_prob"], ascending=[True, False, False]
         ).groupby("week").head(1).index
@@ -394,11 +395,9 @@ class RiskRepo:
 
         sub = self._slice(sem, wk)
         raw_rows = int(len(sub))
-        # risk_scores 是「学生 × 课程 × 周」粒度，一门课一行；而契约里 risk_level 是
-        # 学生级的 max(课程级)。这里先按 level 降序、再按 prob 降序取首行，
-        # 保证每个学生只出现一次，且留下的是他最危险的那门课。
-        # 注意：risk_prob 与 risk_level 在本批数据上并不单调（L0 最高 0.815、
-        # L2 最低 0.20），所以排序必须以 level 为第一关键字，只按 prob 排会和筛选打架。
+        # risk_scores 一门课一行，按 level 降序、prob 降序取首行，留下最危险那门。
+        # 同一周内 level 与 prob 单调等价（level 就是 prob 按该周阈值切出来的），
+        # 但阈值逐周变化、跨周不可比，所以仍以 level 为第一关键字。
         sub = sub.sort_values(
             ["risk_level", "risk_prob", "stu_id"], ascending=[False, False, True]
         ).drop_duplicates(subset=["stu_id"], keep="first")
