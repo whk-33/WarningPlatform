@@ -200,6 +200,65 @@ def test_admin_stat_alert_rate_is_real_not_sample(client, admin_headers):
     assert data["total"] > 1000
 
 
+# ---------------------------------------------------------------- 首页口径统一
+
+HOME_LEGACY_FIELDS = ("total_student", "warn_count", "high_count", "mid_count",
+                      "normal_count", "risk_distribute", "warn_rate")
+
+
+def test_home_stat_shares_caliber_with_risk_stat(client, admin_headers):
+    """v1.3 起首页与风险统计同源，数字必须逐项相等。
+
+    历史问题：home/stat 走规则式整学期结算（51.4%），risk/stat 走模型第 8 周（34.7%），
+    差值 16.7pp，同一块看板上并列展示必然被问「到底哪个对」。
+    """
+
+    home = client.get("/api/admin/home/stat", headers=admin_headers).json()["data"]
+    risk = client.get("/api/admin/risk/stat", headers=admin_headers).json()["data"]
+
+    assert home["semester"] == risk["semester"]
+    assert home["week"] == risk["week"]
+    assert home["total_student"] == risk["total"]
+    assert home["high_count"] == risk["level_2"]
+    assert home["mid_count"] == risk["level_1"]
+    assert home["normal_count"] == risk["level_0"]
+    assert home["warn_count"] == risk["level_1"] + risk["level_2"]
+    assert abs(home["warn_rate"] - risk["alert_rate"]) < 1e-9
+    assert home["caliber"] == f"model_week{risk['week']}"
+
+
+def test_home_stat_keeps_legacy_field_names(client, admin_headers):
+    """前端 Home.vue 已在用旧字段，改口径不能改字段名，否则联调返工。"""
+
+    home = client.get("/api/admin/home/stat", headers=admin_headers).json()["data"]
+    for field in HOME_LEGACY_FIELDS:
+        assert field in home, f"丢掉旧字段 {field} 会打断前端"
+
+
+def test_home_stat_rejects_bad_week(client, admin_headers):
+    assert client.get("/api/admin/home/stat?week=0", headers=admin_headers).status_code == 422
+    assert client.get("/api/admin/home/stat?week=99", headers=admin_headers).status_code == 422
+
+
+def test_student_avg_score_null_has_explicit_reason(client, admin_headers):
+    """avg_score 为 None 时必须同时给出 has_valid_score=False。
+
+    真实数据里 32.5% 的学生当学期所有课程都退学，剔除退学后无有效成绩，
+    avg_score 天然为空。不解释清楚，前端只能各自猜「是缺数据还是 0 分」。
+    """
+
+    data = client.get("/api/admin/student/list?page=1&page_size=50",
+                      headers=admin_headers).json()["data"]
+
+    for item in data["list"]:
+        assert "has_valid_score" in item
+        assert "valid_course_count" in item
+        # 两者必须自洽：有有效成绩 ⇔ avg_score 非空
+        assert item["has_valid_score"] == (item["avg_score"] is not None)
+        if not item["has_valid_score"]:
+            assert item["valid_course_count"] == 0
+
+
 # ---------------------------------------------------------------- 风险演示账号
 
 def test_risk_demo_account_can_read_own_curve(client):

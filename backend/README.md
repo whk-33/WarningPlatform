@@ -7,7 +7,11 @@ FastAPI + pandas 实现，对外提供两套并行接口：
 | 阶段一业务接口 | [`../docs/接口约定.md`](../docs/接口约定.md) | 15 | `interim/*.parquet`（学生×课程成绩、行为日志） |
 | 阶段四风险分接口 | [`../docs/阶段四_风险接口契约.md`](../docs/阶段四_风险接口契约.md) | 5 | `risk_scores.parquet`（周级风险分，缺失时用 `docs/mock_api/*.json`） |
 
-两套**并行不替换**（契约 B3）：阶段四的 `risk_level` 是周级模型口径，阶段一的是学期末成绩口径；前端对比验收后再决定是否切换。
+接口层面两套**并行不替换**（契约 B3）：阶段四的 `risk_level` 是周级模型口径，阶段一的是学期末成绩口径。
+
+**但展示口径已于 v1.3 合并**：`/admin/home/stat` 现在内部委托 `/admin/risk/stat`，
+首页/看板只出现模型口径一套数字；规则式结算口径退居"期末回顾"用途，
+不再作为任何页面的主指标（原因见 `docs/接口约定.md` §11.1）。
 
 **设计前提：不依赖 PostgreSQL / MySQL，也不强依赖算法产物。** 启动时自动探测数据源，读不到就用兜底数据起飞，`/api/health` 会明确告诉你当前用的是哪一种。
 
@@ -143,7 +147,7 @@ python -m pytest tests/ -q
 | POST | `/api/login/admin` | 管理员登录 |
 | POST | `/api/login/student` | 学生登录 |
 | POST | `/api/logout` | 退出（前端清 token 即可，服务端不维护黑名单） |
-| GET | `/api/admin/home/stat` | 首页统计卡片 + 风险分布 |
+| GET | `/api/admin/home/stat` | 首页统计卡片 + 风险分布（**v1.3 起与 `/admin/risk/stat` 同源同值**） |
 | GET | `/api/admin/student/list` | 学生列表（分页 / 搜索 / 风险筛选） |
 | GET | `/api/admin/student/detail` | 学生详情 + 当学期课程 |
 | GET | `/api/admin/gnn/graph` | 全局学生-课程异质图（默认 top50 高风险） |
@@ -206,12 +210,25 @@ export function getRiskStat(params) {
 
 | 口径 | 位置 |
 |---|---|
-| `risk_level = max(课程级)`、`risk_score = 学分加权/2`、`avg_score` 剔除退学+缺考按 0 | `app/data/repo.py` · `_aggregate_students` |
+| `risk_level = max(课程级)`、`risk_score = 学分加权/2`、`avg_score` 剔除退学+缺考按 0、`has_valid_score = valid_course_count > 0` | `app/data/repo.py` · `risk_table` |
 | `warn_id = W + md5(stu\|course\|sem\|week)[:9]`（幂等） | `app/data/repo.py` · `make_warn_id` |
 | 图裁剪（top N 学生 + 其课程，学生端 1 跳子图） | `app/data/repo.py` · `graph` / `student_subgraph` |
 | 归因因子（规则产出，响应带 `source: "rule"`） | `app/services.py` · `build_factors` |
 | 建议模板 | `app/services.py` · `build_suggestions` |
-| 阶段四周级风险（含 mock 兜底、默认周次、最大 3 个因子） | `app/data/risk_repo.py` |
+| 阶段四周级风险（含 mock 兜底、默认周次、最大 3 个因子、**学生级聚合**） | `app/data/risk_repo.py` · `admin_stat` / `admin_list` |
+| 首页统计（**v1.3 起委托 `risk_repo.admin_stat`，不再走规则式结算**） | `app/api/admin.py` · `home_stat` |
+
+### 三条口径，别混用
+
+| 出口 | 口径 | 单位 | 2014J 实测 |
+|---|---|---|---|
+| `/admin/home/stat`、`/admin/risk/stat` | 模型 · 第 8 周 · 学生级 `max(课程级)` | 人 | **3688 / 10670 = 34.56%** |
+| `/admin/warn/list`、`/admin/warn/report` | 规则式 · 整学期结算 | 学生-课程记录 | 5803 条 |
+| `AdminRepo.stat()`（已弃用于展示） | 规则式 · 整学期结算 | 人 | 5486 / 10670 = 51.42% |
+
+第一行与后两行的差异来自"事中"vs"事后"，不是算法分歧：模型口径第 8 周 34.6%，
+到第 15 周升到 57.4%。期末结算口径不再用于任何首页/看板，理由见
+`docs/接口约定.md` §11.1。
 
 ## 环境变量
 
@@ -279,7 +296,9 @@ python scripts/smoke_api.py          # 全接口冒烟：16 项，含旧 15 个 
 | 项 | 说明 |
 |---|---|
 | 默认周次 | **第 8 周（期中）**，不是最新周。`week=15` 是期末结算周，4 个学期的高危率都比 w14 突增 20pp 以上（2014J：31.9% → 53.3%），拿它当默认等于"考完才预警"。要改设 `WP_DEFAULT_WEEK` |
-| `avg_score` | 口径为"剔除退学"。某生当学期全部课程退学时为 `null`；高危榜按风险降序、退学学生排前面，所以首页常见 `null`，属预期 |
+| `avg_score` | 口径为"剔除退学"。某生当学期全部课程退学时为 `null`（2014J 有 3466 人 / 32.5%）；高危榜按风险降序、退学学生排前面，所以首页常见 `null`，属预期。**v1.3 起同时返回 `has_valid_score` / `valid_course_count`**，前端据此显示「无有效成绩」 |
+| 数据粒度 | `risk_scores.parquet` 是「学生 × 课程 × 周」，一门课一行（2014J 第 8 周 10670 人 / 11260 行）。统计和列表都先按学生聚合，`total` 是人数，去重前行数在 `record_total` |
+| `risk_prob` 与 `level` 非单调 | 实测 `level=0` 的 prob 最高 0.815、`level=2` 最低 0.2006，`level` 不是 prob 按阈值派生的。所有排序以 `level` 为第一关键字，详见 `docs/接口约定.md` §11.3 |
 | `list_available` | 全量数据下与 `total` 相等；mock 下才不等 |
 | 演示账号 | `riskdemo` 仍会自动绑到曲线最完整的风险学生，但**已非必需**——两套 ID 同源后，普通学号账号（如 `130045`）自己就能查到曲线 |
 | 密码登不上 | `users.sync()` 不覆盖已有账号密码（防止冲掉人工改过的）。换过 `WP_DEMO_PASSWORD` 后跑 `python scripts/reset_demo_passwords.py --all` |

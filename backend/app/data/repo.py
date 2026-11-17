@@ -163,6 +163,9 @@ class Repo:
           risk_score        = 学分加权风险分，仅用于排序
           high_course_count = 高危课程数，用于优先级筛选
           avg_score         = 剔除退学、缺考按 0、仅当学期
+          valid_course_count= 参与 avg_score 计算的课程数（即非退学课程数）
+          has_valid_score   = valid_course_count > 0；False 时 avg_score 必为 None，
+                              前端显示「—」而不是 0，也不参与排序
         """
 
         sem = self.resolve_semester(semester)
@@ -173,7 +176,8 @@ class Repo:
         if sub.empty:
             empty = pd.DataFrame(
                 columns=["risk_level", "risk_score", "course_count", "high_course_count",
-                         "avg_score", "fail_count", "attendance_rate", "quiz_accuracy"]
+                         "avg_score", "valid_course_count", "has_valid_score",
+                         "fail_count", "attendance_rate", "quiz_accuracy"]
             )
             empty.index.name = "stu_id"
             self._risk_cache[sem] = empty
@@ -196,6 +200,13 @@ class Repo:
         agg["avg_score"] = (
             valid.assign(s=valid["final_score"].fillna(0)).groupby("stu_id")["s"].mean().round(2)
         )
+        # 全学期所有课程都退学的学生，剔除后无任何有效成绩，avg_score 必然是 NaN。
+        # 这不是缺失值 bug，是口径本身的结果（真实数据 2014J 有 3466 人 / 32.5%），
+        # 显式补两个字段把"为什么空"告诉前端，省得前端各自猜。
+        agg["valid_course_count"] = (
+            valid.groupby("stu_id").size().reindex(agg.index).fillna(0).astype(int)
+        )
+        agg["has_valid_score"] = agg["valid_course_count"] > 0
         fail = sub[sub["status"].isin(["不合格", "缺考"])].groupby("stu_id").size()
         agg["fail_count"] = fail.reindex(agg.index).fillna(0).astype(int)
 
@@ -248,6 +259,10 @@ class Repo:
             level = int(r["risk_level"])
             payload = {
                 "avg_score": _num(r["avg_score"]),
+                # avg_score 为 None 的唯一原因是当学期课程全部退学，
+                # 前端据此显示「无有效成绩」而不是 0 分
+                "has_valid_score": bool(r["has_valid_score"]),
+                "valid_course_count": int(r["valid_course_count"]),
                 "risk_level": level,
                 "risk_level_text": level_text(level),
                 "risk_score": _num(r["risk_score"]),
@@ -263,7 +278,8 @@ class Repo:
             }
         else:
             payload = {
-                "avg_score": None, "risk_level": 0, "risk_level_text": level_text(0),
+                "avg_score": None, "has_valid_score": False, "valid_course_count": 0,
+                "risk_level": 0, "risk_level_text": level_text(0),
                 "risk_score": 0.0, "course_count": 0, "high_course_count": 0, "fail_count": 0,
                 "metrics": {"attendance_rate": None, "quiz_accuracy": None,
                             "attendance_threshold": settings.attendance_threshold,
@@ -314,7 +330,8 @@ class Repo:
 
         df = self.students[self.students.index.isin(risk.index)].copy()
         df = df.join(risk[["risk_level", "risk_score", "avg_score", "course_count",
-                           "high_course_count", "fail_count"]], how="left")
+                           "high_course_count", "fail_count",
+                           "valid_course_count", "has_valid_score"]], how="left")
 
         if keyword:
             kw = str(keyword).strip()
@@ -343,6 +360,8 @@ class Repo:
                 "major": str(r["major_name"]),
                 "class_name": str(r["class_name"]),
                 "avg_score": _num(r["avg_score"]),
+                "has_valid_score": bool(r["has_valid_score"]) if pd.notna(r["has_valid_score"]) else False,
+                "valid_course_count": int(r["valid_course_count"]) if pd.notna(r["valid_course_count"]) else 0,
                 "risk_level": level,
                 "risk_level_text": level_text(level),
                 "risk_score": _num(r["risk_score"]),
@@ -352,6 +371,14 @@ class Repo:
         return page_payload(items, total, page_no, page_size)
 
     def stat(self, semester: str | None = None) -> dict:
+        """规则式整学期结算口径（**已弃用于展示**）。
+
+        v1.3 起 `/api/admin/home/stat` 改为委托 `RiskRepo.admin_stat`，因为这里
+        没有周维度、本质是"考完之后回头看"（2014J 预警率 51.42%），既不具可干预性，
+        也和新风险接口的 34.56% 差 16.7pp，同屏展示必然被问"哪个对"。
+
+        保留本方法仅供"期末回顾"类视图；新增页面不要再调用它。
+        """
         sem = self.resolve_semester(semester)
         risk = self.risk_table(sem)
         total = int(len(risk))

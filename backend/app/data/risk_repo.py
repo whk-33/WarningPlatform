@@ -341,7 +341,11 @@ class RiskRepo:
         if sub.empty:
             raise ApiError(404, f"{sem} 没有 {stu_id} 的风险记录")
 
-        idx = sub.groupby("week")["risk_prob"].idxmax()
+        # 多门课按周取风险最高的那门。与 /list 一样以 level 为第一关键字：
+        # risk_prob 与 risk_level 非单调，只按 prob 取会挑到"概率高但等级低"的课。
+        idx = sub.sort_values(
+            ["week", "risk_level", "risk_prob"], ascending=[True, False, False]
+        ).groupby("week").head(1).index
         picked = sub.loc[idx].sort_values("week")
         weeks = [self._row_payload(r) for _, r in picked.iterrows()]
         course_count = int(sub["course_code"].nunique())
@@ -389,12 +393,21 @@ class RiskRepo:
         wk = self.resolve_week(week, sem)
 
         sub = self._slice(sem, wk)
+        raw_rows = int(len(sub))
+        # risk_scores 是「学生 × 课程 × 周」粒度，一门课一行；而契约里 risk_level 是
+        # 学生级的 max(课程级)。这里先按 level 降序、再按 prob 降序取首行，
+        # 保证每个学生只出现一次，且留下的是他最危险的那门课。
+        # 注意：risk_prob 与 risk_level 在本批数据上并不单调（L0 最高 0.815、
+        # L2 最低 0.20），所以排序必须以 level 为第一关键字，只按 prob 排会和筛选打架。
+        sub = sub.sort_values(
+            ["risk_level", "risk_prob", "stu_id"], ascending=[False, False, True]
+        ).drop_duplicates(subset=["stu_id"], keep="first")
+
         if level is not None:
             if level not in (0, 1, 2):
                 raise ApiError(400, f"level 只能是 0/1/2，收到 {level}")
             sub = sub[sub["risk_level"] == level]
 
-        sub = sub.sort_values(["risk_prob", "stu_id"], ascending=[False, True])
         total = int(len(sub))
         start = (page - 1) * size
         chunk = sub.iloc[start:start + size]
@@ -414,6 +427,9 @@ class RiskRepo:
             "total": total,
             # 与 total 同值（全量数据能翻到底）；保留该字段是为了让前端只用一套分页逻辑
             "list_available": total,
+            # 去重前的原始记录数（学生-课程对）。total 是学生数，两者不等属正常：
+            # 一个学生选了 N 门课就有 N 行，列表只保留风险最高的那门。
+            "record_total": raw_rows,
             "items": items,
             "data_source": self.source,
             "sample_based": self._sample_based,
@@ -425,6 +441,11 @@ class RiskRepo:
         wk = self.resolve_week(week, sem)
 
         sub = self._slice(sem, wk)
+        record_total = int(len(sub))
+        # 必须按学生聚合：risk_scores 一门课一行，直接 value_counts 得到的是
+        # 「学生-课程对」的分布，total 会被撑大（2014J 第 8 周 11260 vs 实际 10670 人）。
+        # 契约里 risk_level 定义为 max(课程级)，所以这里取 groupby.max。
+        student_level = sub.groupby("stu_id")["risk_level"].max()
 
         # mock 的 items 只导出了 top20 高危，直接按样本统计会得到 alert_rate=100%，
         # 前端联调时会误以为全校都是高危。这里用算法侧导出的真实分布，
@@ -443,9 +464,10 @@ class RiskRepo:
                 "data_source": self.source,
                 "sample_based": True,
                 "list_available": int(len(sub)),
+                "record_total": record_total,
             }
 
-        counts = sub["risk_level"].value_counts().to_dict()
+        counts = student_level.value_counts().to_dict()
         level_0 = int(counts.get(0, 0))
         level_1 = int(counts.get(1, 0))
         level_2 = int(counts.get(2, 0))
@@ -463,6 +485,8 @@ class RiskRepo:
             "sample_based": self._sample_based,
             # 全量数据下列表也能翻到底，两个数相等；前端统一按 list_available 算分页上限即可
             "list_available": total,
+            # 聚合前的「学生-课程对」记录数，用于和 /list 的原始行数对账
+            "record_total": record_total,
         }
 
     # ---------------------------------------------------------------- 元信息
