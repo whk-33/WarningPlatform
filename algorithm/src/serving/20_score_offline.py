@@ -6,13 +6,15 @@
   risk_level_name / pred_event_week / top_factors(JSON 字符串)
 
 口径说明（写进报告与后端对接文档）：
-1. risk_prob 是 TFT 在"第 t 周"给出的"之后还会不会出事"概率；
+1. risk_prob 是 TFT 在"第 t 周"给出的"之后还会不会出事"概率；未做 Platt/isotonic 概率校准，
+   只作排序分使用（语义不是"挂科概率"）；
 2. 当真实风险事件已经发生（0 <= risk_event_time <= week）时，该周 risk_prob 置 1.0、
-   risk_level 置 2（含义是"已出事"，不是模型预测值），前端应展示为"已发生"而不是"风险 100%"；
-3. risk_level 的阈值在 test 切分第 8 周（产品主视图）上按预警率校准到 ≈15%（高 5% / 中 10%），
-   并报告全表逐周的实际预警率；
-4. pred_event_week 来自 DeepSurv，-1 表示本学期无风险；
-5. top_factors 用 TFT 每一步的观测变量选择权重 × 该变量的标准化偏离，取前 3，中文名与图表共用 FEATURE_CN。
+   risk_level 置 2、risk_state 置 1（含义是"已出事"，不是模型预测值），前端应展示为"已发生"；
+3. risk_level 的阈值逐周在"风险池"（尚未出事的学生）上校准到 ≈15%（高 5% / 中 10%）；
+   期末周（week=T-1）没有"未来是否出事"的正样本，沿用上一周阈值，禁止在"永不事件"池上取分位；
+4. risk_score 是未饱和的原始 logit，仅 risk_state=0 有值，供后端排序/分档（与 risk_prob 单调）；
+5. pred_event_week 来自 DeepSurv，-1 表示本学期无风险；
+6. top_factors 用 TFT 每一步的观测变量选择权重 × 该变量的标准化偏离，取前 3，中文名与图表共用 FEATURE_CN。
 
 运行：py -3 algorithm/src/serving/20_score_offline.py
 """
@@ -62,7 +64,11 @@ def calibrate_by_week(prob: np.ndarray, y: np.ndarray, valid: np.ndarray, cal_sp
     th, info, prev = {}, {}, None
     for t in range(T):
         m = cal_split & valid[:, t]
-        if int(m.sum()) >= 200:
+        n_val = int(m.sum())
+        n_pos = int(y[m, t].sum())
+        # 期末周 valid 只剩 event == -1（永不事件）学生，y 全 0，分位数没有判别意义；
+        # 同理任何"无正样本"的周都不校准，统一沿用上一周阈值。
+        if t < T - 1 and n_val >= 200 and n_pos > 0:
             p_high = float(np.quantile(prob[m, t], 1 - high_rate))
             p_mid = float(np.quantile(prob[m, t], 1 - high_rate - mid_rate))
             pred = np.where(prob[m, t] >= p_high, 2, np.where(prob[m, t] >= p_mid, 1, 0))
@@ -80,6 +86,15 @@ def calibrate_by_week(prob: np.ndarray, y: np.ndarray, valid: np.ndarray, cal_sp
                 "test_recall_high": round(float((pt[pos] >= 2).mean()), 4) if pos.any() else None,
             }
             prev = (p_high, p_mid)
+        else:
+            fallback = prev if prev else (0.95, 0.75)
+            info[t] = {
+                "n_val": n_val,
+                "n_pos": n_pos,
+                "threshold_high": round(fallback[0], 4),
+                "threshold_mid": round(fallback[1], 4),
+                "note": "期末周或无正样本：沿用上一周阈值",
+            }
         th[t] = prev if prev else (0.95, 0.75)
     return th, info
 
@@ -148,6 +163,7 @@ def main() -> int:
     with torch.no_grad():
         logits, w = model(torch.as_tensor(xs_z), torch.as_tensor(xo_z), torch.as_tensor(xk_z))
         prob = torch.sigmoid(logits).numpy().astype(np.float32)
+        raw_logit = logits.numpy().astype(np.float32)
         wo = w["obs"].numpy()
 
     meta = panel["meta"]
@@ -155,6 +171,8 @@ def main() -> int:
     weeks = np.arange(T)[None, :]
     occurred = (event >= 0) & (event <= weeks)     # 该周风险事件已发生
     prob = np.where(occurred, 1.0, prob).astype(np.float32)
+    # 未饱和排序分：已发生行没有模型分数（置 NaN），其余保留原始 logit
+    risk_score = np.where(occurred, np.nan, raw_logit).astype(np.float32)
 
     # ---- 逐周阈值校准（val 定阈值，test 报表现）----
     split = meta["split_group"].to_numpy()
@@ -196,14 +214,18 @@ def main() -> int:
         f"{cn(c)}={'推高' if s > 0 else '降低'}" for c, s in zip(obs_cols, sign)))
 
     out["top_factors"] = build_top_factors(xo_z, wo, xo, obs_cols, sign)
+    out["risk_state"] = occurred.reshape(-1).astype("int8")        # 0=模型预测 1=已发生
+    out["risk_score"] = risk_score.reshape(-1)                     # 原始 logit，已发生为 NaN
     out = out[["stu_id", "course_code", "semester", "week", "risk_prob", "risk_level",
-               "risk_level_name", "pred_event_week", "top_factors"]]
+               "risk_level_name", "pred_event_week", "top_factors", "risk_state", "risk_score"]]
 
     # ---- 校验：契约字段 / 取值范围 ----
     checks = {
         "week_range_ok": bool(out["week"].between(0, T - 1).all()),
         "prob_range_ok": bool(out["risk_prob"].between(0, 1).all()),
         "prob_nan": int(out["risk_prob"].isna().sum()),
+        "risk_state_values": sorted(int(v) for v in out["risk_state"].unique()),
+        "risk_score_non_null": int(out["risk_score"].notna().sum()),
         "pred_event_week_min": int(out["pred_event_week"].min()),
         "pred_event_week_max": int(out["pred_event_week"].max()),
         "rows": int(len(out)),
@@ -244,10 +266,11 @@ def main() -> int:
         "alert_rate_test_by_week": alert_test,
         "checks": checks,
         "notes": [
-            "risk_prob 为 TFT 在当周给出的'之后是否还会出事'概率；",
-            "风险事件已发生的周（0 <= risk_event_time <= week）置 risk_prob=1.0、risk_level=2，语义是'已发生'；",
-            "risk_level 阈值逐周在 val 有效样本上校准（目标 15% = 高 5% + 中 10%），test 上的实际预警率见 alert_rate_test_by_week；",
-            "第 15 周没有有效样本（事件必然已发生/无风险），沿用第 14 周阈值；",
+            "risk_prob 为 TFT 在当周给出的'之后是否还会出事'概率，未做概率校准，仅用于排序；",
+            "风险事件已发生的周（0 <= risk_event_time <= week）置 risk_prob=1.0、risk_level=2、risk_state=1，语义是'已发生'；",
+            "risk_level 阈值逐周在 val 风险池（尚未出事的学生）上校准（目标 15% = 高 5% + 中 10%），test 上的实际预警率见 alert_rate_test_by_week；",
+            "期末周无正样本，沿用第 14 周阈值（不在'永不事件'池上取分位）；",
+            "risk_score 为未饱和 logit，仅 risk_state=0 有值，供后端排序与分档；",
             "pred_event_week 来自 M3 DeepSurv，-1 表示本学期无风险；",
         ],
     }, REPORTS_DIR / "serving_metrics.json")
