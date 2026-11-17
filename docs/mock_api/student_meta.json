@@ -1,0 +1,106 @@
+{
+  "_note": "演示用合成数据：risk_scores.parquet 只有 9 个冻结字段，没有姓名/专业/班级。这里按 mock 风险数据的 stu_id 生成，仅供界面展示，界面上必须保留「演示数据」标识。真实数据到位后若主数据学号能对上，后端会优先用主数据的姓名覆盖此文件。",
+  "semester": "2014B",
+  "students": {
+    "stu_103891": {
+      "student_name": "陈嘉豪",
+      "major_name": "计算机科学与技术",
+      "class_name": "计算机2201"
+    },
+    "stu_997948": {
+      "student_name": "李思远",
+      "major_name": "软件工程",
+      "class_name": "软件2202"
+    },
+    "stu_100621": {
+      "student_name": "王雨桐",
+      "major_name": "数据科学与大数据技术",
+      "class_name": "大数据2201"
+    },
+    "stu_104238": {
+      "student_name": "张子扬",
+      "major_name": "计算机科学与技术",
+      "class_name": "计算机2201"
+    },
+    "stu_88758": {
+      "student_name": "刘欣怡",
+      "major_name": "软件工程",
+      "class_name": "软件2202"
+    },
+    "stu_513796": {
+      "student_name": "赵梓涵",
+      "major_name": "数据科学与大数据技术",
+      "class_name": "大数据2201"
+    },
+    "stu_513854": {
+      "student_name": "周明轩",
+      "major_name": "计算机科学与技术",
+      "class_name": "计算机2201"
+    },
+    "stu_513969": {
+      "student_name": "吴佳琪",
+      "major_name": "软件工程",
+      "class_name": "软件2202"
+    },
+    "stu_513997": {
+      "student_name": "徐浩然",
+      "major_name": "数据科学与大数据技术",
+      "class_name": "大数据2201"
+    },
+    "stu_514186": {
+      "student_name": "孙若曦",
+      "major_name": "计算机科学与技术",
+      "class_name": "计算机2201"
+    },
+    "stu_514277": {
+      "student_name": "马承宇",
+      "major_name": "软件工程",
+      "class_name": "软件2202"
+    },
+    "stu_515648": {
+      "student_name": "朱语彤",
+      "major_name": "数据科学与大数据技术",
+      "class_name": "大数据2201"
+    },
+    "stu_516685": {
+      "student_name": "胡博文",
+      "major_name": "计算机科学与技术",
+      "class_name": "计算机2201"
+    },
+    "stu_509417": {
+      "student_name": "郭静怡",
+      "major_name": "软件工程",
+      "class_name": "软件2202"
+    },
+    "stu_67986": {
+      "student_name": "林睿泽",
+      "major_name": "数据科学与大数据技术",
+      "class_name": "大数据2201"
+    },
+    "stu_69239": {
+      "student_name": "何书瑶",
+      "major_name": "计算机科学与技术",
+      "class_name": "计算机2201"
+    },
+    "stu_69489": {
+      "student_name": "高天佑",
+      "major_name": "软件工程",
+      "class_name": "软件2202"
+    },
+    "stu_69494": {
+      "student_name": "罗诗琪",
+      "major_name": "数据科学与大数据技术",
+      "class_name": "大数据2201"
+    },
+    "stu_71723": {
+      "student_name": "郑皓轩",
+      "major_name": "计算机科学与技术",
+      "class_name": "计算机2201"
+    },
+    "stu_115875": {
+      "student_name": "梁嘉怡",
+      "major_name": "软件工程",
+      "class_name": "软件2202"
+    }
+  }
+}

@@ -74,6 +74,7 @@ algorithm/data/oulad/processed_demo/risk_scores.parquet
 | `/admin/risk/stat` 的 `total: 7804` | 这是算法侧从真实 parquet 导出的全量分布，**与列表条数不一致是正常的** |
 | `list_available: 20` | stat 里额外给出"列表实际能取到多少条"，用来解释上面的不一致 |
 | `partial: true` | 该学生只有单周数据，曲线不完整（mock 中非样本学生都是这种情况） |
+| `student_name` 等 3 个姓名字段 | 风险数据 9 字段里没有姓名，来自 `docs/mock_api/student_meta.json`（**合成数据**，界面上要标"演示数据"）。真实数据到位后若主数据学号能对上，优先用主数据姓名 |
 
 真实 parquet 到位后（`WP_PROCESSED` 指过去即可），`total / list_available / sample_based` 会自动变成全量口径，接口字段不用改。
 

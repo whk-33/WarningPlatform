@@ -245,3 +245,47 @@ def test_risk_demo_account_survives_resync(client):
     row = users.get_by_account(settings.risk_demo_account, "student")
     assert row is not None, "riskdemo 被当成过期账号删掉了"
     assert str(row["stu_id"]) == str(demo["stu_id"])
+
+
+# ---------------------------------------------------------------- 学生姓名补全
+
+def test_admin_risk_list_carries_student_name(client, admin_headers):
+    """风险榜要能独立成表：姓名/专业/班级由 risk 接口自带，前端不必再 join 旧学生列表。
+
+    风险分数据 9 个冻结字段里没有姓名，后端从主数据 + docs/mock_api/student_meta.json 补。
+    """
+
+    resp = client.get("/api/admin/risk/list?size=3", headers=admin_headers)
+    assert resp.status_code == 200, resp.text
+
+    item = resp.json()["data"]["items"][0]
+    for key in ("student_name", "major_name", "class_name"):
+        assert key in item, f"列表项缺少字段 {key}，前端又要回头 join 一次"
+    assert item["student_name"], "mock 下姓名不应为空"
+
+
+def test_student_curve_carries_student_name(client, admin_headers):
+    """弹窗标题要显示"王雨桐 · 大数据2201"，曲线接口得自己带姓名。"""
+
+    resp = client.get("/api/risk/student/stu_100621", headers=admin_headers)
+    assert resp.status_code == 200, resp.text
+
+    data = resp.json()["data"]
+    assert data["student_name"]
+    assert data["class_name"]
+
+
+def test_student_meta_missing_returns_null_not_500(admin_headers, client, monkeypatch):
+    """姓名映射缺人时要返回 null，不能 500 —— 姓名只是展示字段，不该拖垮风险榜。"""
+
+    from app.data.risk_repo import get_risk_repo
+
+    repo = get_risk_repo()
+    monkeypatch.setattr(repo, "_meta", {})
+
+    resp = client.get("/api/admin/risk/list?size=2", headers=admin_headers)
+    assert resp.status_code == 200, resp.text
+
+    item = resp.json()["data"]["items"][0]
+    assert item["student_name"] is None
+    assert item["stu_id"]

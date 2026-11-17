@@ -27,6 +27,8 @@ from app.core.response import ApiError
 log = logging.getLogger(__name__)
 
 PARQUET_NAME = "risk_scores.parquet"
+# 学生姓名/专业/班级的来源文件（风险 parquet 里没有这三列）
+META_NAME = "student_meta.json"
 
 # 冻结字段（契约 §2）；mock 与 parquet 都要保证这 9 列存在，缺列直接报错而不是静默跑出坏数据
 REQUIRED_COLUMNS = (
@@ -75,6 +77,7 @@ class RiskRepo:
         self._expected_total: int | None = None
         self._default_week: int | None = None
         self._mock_stat: dict[str, Any] | None = None
+        self._meta: dict[str, dict[str, str | None]] = {}
         self._load()
 
     # ---------------------------------------------------------------- 加载
@@ -89,12 +92,70 @@ class RiskRepo:
                 self._df = self._normalize(df)
                 self.source = "parquet"
                 self.path = candidate
+                self._load_meta()
                 log.info("风险分数据源=parquet 路径=%s 行数=%d", candidate, len(self._df))
                 return
             except Exception as exc:  # 文件损坏/依赖缺失都不该让服务起不来
                 log.warning("读取 %s 失败，继续探测下一个：%s", candidate, exc)
 
         self._load_mock()
+        self._load_meta()
+
+    def _load_meta(self) -> None:
+        """补学生姓名/专业/班级。
+
+        风险分数据的 9 个冻结字段里没有这三列，只能从外部补，来源按优先级叠加：
+
+        1. 主数据（`students` 表）：学号能对上就用真实姓名——真实 parquet 到位后若与主数据
+           同一套学号，这条自动生效，不需要改代码；
+        2. `docs/mock_api/student_meta.json`：演示用合成数据，按风险数据的 stu_id 生成。
+
+        两者都缺时字段返回 `null`，接口仍然正常——姓名缺失不该让风险榜 500。
+        """
+
+        meta: dict[str, dict[str, str | None]] = {}
+
+        try:
+            from app.data.repo import get_repo
+
+            students = get_repo().students
+            cols = set(students.columns)
+            if "stu_num" in cols:
+                for row in students.itertuples(index=False):
+                    meta[str(getattr(row, "stu_num"))] = {
+                        "student_name": str(getattr(row, "student_name", "") or "") or None,
+                        "major_name": str(getattr(row, "major_name", "") or "") or None,
+                        "class_name": str(getattr(row, "class_name", "") or "") or None,
+                    }
+        except Exception as exc:  # 主数据没加载好不影响风险接口
+            log.debug("主数据姓名映射不可用：%s", exc)
+
+        path = Path(settings.mock_api_dir) / META_NAME
+        if path.exists():
+            try:
+                payload = json.loads(path.read_text(encoding="utf-8"))
+                for stu_id, info in (payload.get("students") or {}).items():
+                    if not isinstance(info, dict):
+                        continue
+                    meta[str(stu_id)] = {
+                        "student_name": info.get("student_name"),
+                        "major_name": info.get("major_name"),
+                        "class_name": info.get("class_name"),
+                    }
+            except Exception as exc:
+                log.warning("读取 %s 失败，风险榜将没有姓名：%s", path, exc)
+
+        self._meta = meta
+        if meta:
+            log.info("风险学生姓名映射 %d 条（来源：主数据 + %s）", len(meta), META_NAME)
+
+    def _student_meta(self, stu_id: str) -> dict[str, str | None]:
+        info = self._meta.get(str(stu_id)) or {}
+        return {
+            "student_name": info.get("student_name"),
+            "major_name": info.get("major_name"),
+            "class_name": info.get("class_name"),
+        }
 
     def _normalize(self, df: pd.DataFrame) -> pd.DataFrame:
         missing = [c for c in REQUIRED_COLUMNS if c not in df.columns]
@@ -255,6 +316,8 @@ class RiskRepo:
 
         return {
             "stu_id": stu_id,
+            # 姓名/专业/班级：风险数据本身没有，从主数据或演示元数据补，补不到是 null
+            **self._student_meta(stu_id),
             "semester": sem,
             "course_count": course_count,
             "week_count": len(weeks),
@@ -308,6 +371,7 @@ class RiskRepo:
         for _, r in chunk.iterrows():
             payload = self._row_payload(r)
             payload.pop("top_factors")  # 列表不背归因，避免响应膨胀；需要时调 /factors
+            payload.update(self._student_meta(payload["stu_id"]))
             items.append(payload)
 
         return {
