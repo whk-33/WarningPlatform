@@ -45,6 +45,11 @@ algorithm/data/interim              ← 阶段一 mock 数据（29 万行那套�
 （都不存在）→ 内置演示数据：200 学生 / 5 课程 / 约 1000 条成绩
 ```
 
+> ⚠️ **前两个目录被 `.gitignore` 忽略（`algorithm/data/oulad/`），clone/pull 拿不到，必须手工拷贝**。
+> 只拷 `risk_scores.parquet` 而不拷 `interim_demo/` 会出现「主数据 200 人、风险数据 28785 人」的错配，
+> 表现为学生详情弹窗的风险曲线全部 `404`（见 `docs/问题_学生ID不统一.md`）。
+> **一眼判断**：`/api/health` 的 `students` 等于 200 就是跑在合成集上，应为 28785。
+
 也可以用环境变量直接指定：
 
 ```bash

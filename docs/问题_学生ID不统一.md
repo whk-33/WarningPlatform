@@ -1,24 +1,19 @@
-# 问题：风险分数据的学生 ID 与主数据不统一
+# 问题：风险曲线 404 —— 后端主数据跑在合成演示集上
 
-> 提出方：后端　|　提出日期：2026-11-17　|　需要：算法侧确认 + 提供对照关系
-> 影响：管理员端「学生详情 → 周度风险曲线」这条链路目前演示不出来（必然 404）
-
----
-
-## 1. 一句话结论
-
-系统里存在**两套互不相交的学生 ID 数字空间**，格式看起来一样（都是 `stu_` + 数字），但一套是 `100001–100200`，另一套是 OULAD 的 `88758 / 100621 / 997948`，**交集为 0**，而且仓库里**没有任何一张表能把它们对起来**，后端无法自己修。
+> 提出方：后端　|　提出日期：2026-11-17　|　**状态：根因已定位（算法侧核查后修正），待补数据文件**
+> 影响：管理员端「学生详情 → 周度风险曲线」这条链路演示不出来（必然 404）
+> 结论一句话：**不是两套 ID 无法对齐，是后端根本没加载算法真实产物，读的是 200 人合成演示集。**
 
 ---
 
-## 2. 现象（可复现）
+## 1. 现象（可复现）
 
 管理员登录后，从「学生列表」点进任意学生详情，查该生的周度风险曲线：
 
 ```bash
 TOKEN=...  # POST /api/login/admin
 
-# 旧学生列表里的学生（主数据学号）
+# 学生列表里的学生
 curl -s "http://127.0.0.1:8000/api/risk/student/100001" -H "Authorization: Bearer $TOKEN"
 # → {"code":404,"msg":"2014B 没有 100001 的风险记录","data":null}
 
@@ -31,139 +26,136 @@ curl -s "http://127.0.0.1:8000/api/risk/student/stu_100621" -H "Authorization: B
 
 ---
 
-## 3. 证据（四条，均为实测）
+## 2. 根因（已实测到具体目录）
 
-### 3.1 主数据：200 人，学号是连续人工编号
+### 2.1 后端没有加载算法真实产物
 
-```
-students 表：stu_num = 100001 … 100200，共 200 个，无缺口
-            student_no 与 stu_num 同值
-            stu_id     = "stu_" + stu_num
-```
+`backend/app/data/loader.py` 按 `settings.interim_candidates` 的顺序找目录，命中第一个"表齐全"的就用：
 
-学号连续无缺口，说明这批数据是**抽取后重新编号**的，不是 OULAD 原号。
-
-### 3.2 风险分：7804 人，stu_id 是 OULAD 原始 `id_student`
-
-`risk_scores.parquet`（阶段四产物，14 MB，未入仓）里的 `stu_id` 形如（样例取自 `docs/mock_api/admin_list.json`，该文件是算法侧从真实 parquet 导出的样本）：
-
-```
-stu_88758    stu_100621    stu_103891    stu_997948    stu_513796
-```
-
-都是 `stu_` + OULAD 的 `id_student`（5–6 位，区间 88758–997948）。规模 7804 人（见 `docs/mock_api/admin_stat.json` 的 `total`）。
-
-**与主数据 200 人的交集：0。**
-
-### 3.3 其他算法产物用的都是主数据那套
-
-| 产物 | stu_id 样例 | 属于哪套 |
+| 优先级 | 目录 | 本机状态 |
 |---|---|---|
-| `tft_weekly.parquet` | `stu_100001` | 主数据 ✅ |
-| `dkt_sequences.parquet` | `stu_100001` | 主数据 ✅ |
-| `deepsurv_events.parquet` | `stu_100096` | 主数据 ✅ |
-| `graph/dim_student.parquet`（图节点 1141 个） | `stu_100096` | 主数据 ✅ |
-| **`risk_scores.parquet`** | **`stu_88758`** | **OULAD ❌** |
+| 1 | `algorithm/data/oulad/interim_demo`（算法真实产物，28,785 人） | ❌ **缺失** |
+| 2 | `algorithm/data/oulad/interim` | ❌ 缺失 |
+| 3 | `algorithm/data/interim`（**200 人合成演示残留**） | ✅ 命中 |
 
-也就是说：**只有阶段四的风险分这一份产物没有做 ID 归一**，其余全部是主数据 ID。这也是为什么前端只在风险曲线上遇到 404，其他页面都正常。
-
-### 3.4 仓库里两张映射表都缺 OULAD 原始 ID
+实测输出：
 
 ```
-algorithm/data/interim/id_mapping.csv
-  stu_num_raw, stu_num_offset, stu_uuid, stu_id
-  100096, 1100096, bdd640fb-0667-..., stu_100096
-
-algorithm/data/raw/id_crosswalk.csv
-  stu_num_raw, stu_num_offset, stu_uuid, unified
+interim 命中: C:\Users\liucan\Desktop\WarningPlatform\algorithm\data\interim
+实际 source: parquet | 学生数: 200 | 学期: ['2024F', '2025S']
+姓名样例: 学生0096 / 学生0016 / 学生0031，班级全是「未分班」
 ```
 
-两张表都只有「重编号后的号 → 各种派生表示」，**没有一列是 OULAD 的 `id_student`**。`stu_uuid` 是随机 UUID，也无法反推。
+`学生0016`、`未分班`、学号 100001–100200 连续无缺口——这些都是**合成数据特征**，OULAD 里没有这些人。
 
-所以后端拿不到可靠对照，**手写映射等于凭空捏造**——会把两个真实学生绑成一个人，答辩被追问时无法解释。这是后端目前不做 ID 对齐的唯一原因。
+### 2.2 为什么真实产物不在机器上
 
----
+`.gitignore` 第 60 行忽略了整个 `algorithm/data/oulad/`：
 
-## 4. 需要算法侧做的（三选一，按推荐度排序）
-
-### 方案 A（推荐）：重跑 `risk_scores` 时把 stu_id 换成主数据 ID
-
-抽样/重编号那一步既然已经存在（`id_crosswalk` 就是它的产物），只要在当时把 `id_student → stu_num` 一并落库，风险分就能直接用主数据 `stu_id` 落盘。
-
-- 产出：`risk_scores.parquet` 的 `stu_id` 变成 `stu_100001` 这类
-- 后端改动：零（现有 5 个接口自动就能和其余 15 个接口对上）
-- 需要确认：7804 人与这 200 人是否同一批人（见 §5 问题 Q3）
-
-### 方案 B（退一步）：单独给一张对照表
-
-不重跑也行，只要给一份 CSV 放仓库：
-
-```csv
-id_student,stu_num,stu_id
-100621,100016,stu_100016
-...
+```
+algorithm/data/oulad_raw/
+algorithm/data/oulad/
+algorithm/data/public/
 ```
 
-- 演示集只有 200 人，200 行就够
-- 后端加一层转换（读该表，风险接口出入口做映射），约半天
-- 代价：多一张要长期维护的表
+所以 `git clone` / `git pull` **永远拉不到** `interim_demo/` 与 `processed_full_demo/`，必须单独拷。这件事之前没人交代过，后端就一直在跑合成集。
 
-### 方案 C（如果两拨人完全无关）
+### 2.3 风险数据却是真数据
 
-若 7804 人与这 200 人不是同一批（比如 200 人是另造的演示数据），那就无法统一，只能二选一：
+`risk_scores.parquet` 也不在仓库（同样被忽略），本机目前连它都没有，风险接口走的是 `docs/mock_api/*.json`（算法从真实 parquet 导出的样本，`stu_100621` 这类 OULAD ID）。
 
-- 把演示集换成风险分覆盖的学生（主数据、图、DKT 全部要重跑）；
-- 或接受「风险页独立演示」，不进学生详情弹窗（后端已按这个方案做了兜底，见 §6）。
+于是：**主数据 = 200 个合成学生；风险数据 = OULAD 真实学生 → 交集为 0**。
 
----
+### 2.4 算法侧的两份产物本来是 100% 同源的
 
-## 5. 需要算法侧回答的三个问题
-
-| # | 问题 | 为什么要问 |
+| 产物 | 规模 | `stu_id` 样例 |
 |---|---|---|
-| Q1 | 这 200 人是从 OULAD 里抽的吗？抽的是哪 200 个 `id_student`？ | 决定 A/B 方案可不可行 |
-| Q2 | 重编号前的 `id_student` 还存在吗？在哪台机器/哪个目录？ | 若还在，B 方案 10 分钟能补完 |
-| Q3 | `risk_scores` 的 7804 人与这 200 人**是不是同一批人**？ | 若是子集关系，A 方案最干净；若是两拨人，只能走 C |
+| `oulad/interim_demo/student_info.parquet` | 32,593 行 / 28,785 人 | `stu_11391` … |
+| `oulad/processed_full_demo/risk_scores.parquet` | 521,488 行 / 28,785 人 | `stu_11391` … |
 
-> 提示：`algorithm/data/raw/` 下的表已经是重编号后的（`stu_num` 从 100001 起），OULAD 原表不在仓库里，所以在仓库内部查不到答案，需要算法同学确认。
+交集 **28,785（100%）**，学期都是 `2013B / 2013J / 2014B / 2014J`，样例 `stu_100621` = 许浩然 / 软件工程 / 软工1401班 / 2014B。
+
+也就是说：**只要把这两份文件放到位，问题自动消失，一行代码都不用改。**
 
 ---
 
-## 6. 在此之前，后端/前端的临时处理（已上线，不用等）
+## 3. 解法
+
+### 方案 A（推荐，零改码）：把算法产物拷到后端机器
+
+`backend/app/config.py` 已经预留了环境变量，**代码不用动**：
+
+```bash
+# 1) 拷贝（走网盘/U 盘，不要指望 git）
+#    algorithm/data/oulad/interim_demo/            6.7 MB，12 张表
+#    algorithm/data/oulad/processed_full_demo/     risk_scores.parquet 13.7 MB
+#    目标：D:\WarningPlatform\algorithm\data\oulad\
+
+# 2) 指向目录后重启
+export WP_INTERIM=D:/WarningPlatform/algorithm/data/oulad/interim_demo
+export WP_PROCESSED=D:/WarningPlatform/algorithm/data/oulad/processed_full_demo
+# 或者直接在 backend/.env 里写这两行，改完重启 uvicorn
+```
+
+`WP_INTERIM` / `WP_PROCESSED` 在 `config.py:37` 与 `config.py:48` 已支持（`.env.example` 里也有注释示例），设了就会优先于默认路径。
+
+### 方案 B（演示必须小数据集时）：生成 200 人自洽子集
+
+由算法侧按同一批 200 个 `id_student` 从两份产物里过滤，产出 `interim_demo_200` + `risk_scores_200`，两张表 ID 完全一致，不用重跑模型。后端同样只改环境变量。
+
+### ❌ 明确不要做
+
+- **不要重跑 `risk_scores` 把 `stu_id` 改成 `stu_100001`**：那是给合成学生套真实风险，答辩解释不了。
+- **不要手写 ID 映射**：两拨人没有对应关系，写出来就是捏造。
+- **不要再参考 `algorithm/data/interim/id_mapping.csv`**（200 行）和 `algorithm/data/raw/id_crosswalk.csv`：它们是合成演示残留，`stu_num_raw` 已经是重编号后的值，不是 OULAD 原始 ID。真实的映射在 `oulad/interim_demo/id_mapping.parquet`（28,785 行，`stu_id = stu_<id_student>` 恒等）。
+
+---
+
+## 4. 验收（换数据后三条命令）
+
+```bash
+# 1) 规模对不对：应该是 28785，不是 200
+curl -s http://127.0.0.1:8000/api/health
+# 期望：students=28785，semesters 含 2013B/2013J/2014B/2014J
+
+# 2) 风险接口本身还通
+curl -s "http://127.0.0.1:8000/api/risk/student/stu_100621" -H "Authorization: Bearer $TOKEN"
+# 期望：200 + 16 周曲线
+
+# 3) 同一个人能被两个接口识别（这才是要证明的）
+curl -s "http://127.0.0.1:8000/api/admin/student/detail?student_id=stu_100621" -H "Authorization: Bearer $TOKEN"
+# 期望：许浩然 / 软件工程 / 软工1401班 —— 与风险数据里的 stu_100621 是同一个人
+```
+
+---
+
+## 5. 在这次修正之前，先前的错误判断（存档，避免重犯）
+
+| 先前的判断 | 实际情况 |
+|---|---|
+| 200 人是 OULAD 抽样后重编号 | ❌ 是后端合成演示集（`loader.py` 的 `_demo_tables()` 与 `algorithm/data/interim` 那套残留） |
+| 重编号前的 `id_student` 已丢失 | ❌ 一直在 `oulad/interim_demo/id_mapping.parquet`，28,785 行且是恒等映射 |
+| 仓库里没有任何对照表，后端无法修 | ❌ 对照表存在；真正的问题是**这份产物没被拷到后端机器**，不是缺对照 |
+
+教训：查 ID 问题时，先确认**接口实际喂的是哪份数据**（`/api/health` 的 `data_source` 与 `students` 数量），再去比对 ID 空间——否则会拿合成集和真实集做对比，得出"无法对齐"的错误结论。
+
+---
+
+## 6. 附：在此之前的前端兜底（已上线）
 
 | 角色 | 做法 |
 |---|---|
-| 后端 | `/api/admin/risk/list` 与 `/api/risk/student/{stu_id}` 已补 `student_name` / `major_name` / `class_name`（v1.2），风险榜可以独立成表，不依赖旧学生列表 |
-| 前端 | 「本周风险榜」点行 → 详情弹窗看曲线（用风险数据自己的 `stu_id`）；旧入口进弹窗若 404，显示「该生暂无周度风险数据」空态 |
-| 演示 | 学生端统一用 `riskdemo` 账号（自动绑定曲线最完整的学生） |
+| 后端 | `/api/admin/risk/list`、`/api/risk/student/{stu_id}` 已补 `student_name` / `major_name` / `class_name`（v1.2），风险榜可独立成表 |
+| 前端 | 「本周风险榜」点行 → 弹窗看曲线（用风险数据自己的 `stu_id`）；旧入口 404 显示「该生暂无周度风险数据」空态 |
+| 演示 | 学生端用 `riskdemo` 账号（自动绑曲线最完整的学生） |
 
-这些只是绕过，**根因仍在上面三选一**。
-
----
-
-## 7. 改完怎么验收
-
-```bash
-# 1) 风险分的 stu_id 应该和主数据同一套
-#    路径按 WP_PROCESSED 实际指向的目录替换
-python -c "import pandas as pd; \
-  print(pd.read_parquet('algorithm/data/oulad/processed_full_demo/risk_scores.parquet')['stu_id'].head())"
-# 期望：stu_100001 这类；若还是 stu_100621 → 没改
-
-# 2) 用主数据学号能查到风险曲线
-curl -s "http://127.0.0.1:8000/api/risk/student/100001" -H "Authorization: Bearer $TOKEN"
-# 期望：200 + weeks 数组；404 → 仍未对齐
-
-# 3) 风险榜与学生列表能对上同一个人
-curl -s "http://127.0.0.1:8000/api/admin/risk/list?size=1" -H "Authorization: Bearer $TOKEN"
-curl -s "http://127.0.0.1:8000/api/admin/student/detail?student_id=100001" -H "Authorization: Bearer $TOKEN"
-# 期望：两边的 student_name / stu_id 指向同一个学生
-```
+换数据之后这些兜底都不用动，`student_meta.json` 会自动被主数据的真实姓名覆盖（`_load_meta()` 优先级已按此设计）。
 
 ---
 
 ## 参考
 
-- ID 现状与限制：`docs/接口约定.md` §九 已知限制 11、12
+- 数据源探测顺序：`backend/app/config.py` 的 `interim_candidates`、`processed_candidates`
+- 后端加载逻辑：`backend/app/data/loader.py` 的 `find_interim()` / `load_all()`
+- ID 现状限制：`docs/接口约定.md` §九 已知限制 11、12
 - 风险接口契约：`docs/阶段四_风险接口契约.md`
-- 映射表现状：`algorithm/data/interim/id_mapping.csv`、`algorithm/data/raw/id_crosswalk.csv`
