@@ -168,3 +168,20 @@ curl -s "http://127.0.0.1:8000/api/admin/student/detail?student_id=stu_100621" -
 - 后端加载逻辑：`backend/app/data/loader.py` 的 `find_interim()` / `load_all()`
 - ID 现状限制：`docs/接口约定.md` §九 已知限制 11、12
 - 风险接口契约：`docs/阶段四_风险接口契约.md`
+
+---
+
+## 状态更新（2026-11-17）：已解决
+
+数据到位后按方案 A 接入，结论反转：
+
+| 项 | 结果 |
+|---|---|
+| 主数据 | `interim_demo`，28,785 学生，姓名/专业/班级均为真实值（如「徐逸飞 / 计科1301班」） |
+| 风险分 | `risk_scores.parquet`，521,488 行，4 个学期 |
+| 两套 ID 交集 | **28,785 = 学生总数**，完全同源 |
+| 普通学生账号查自己 | 5/5 返回 `200` + 16 周曲线 |
+| 姓名补全 | `_load_meta` 已支持 `stu_id` / `stu_num` / `student_no` 三套写法，实测有值 |
+
+`python scripts/verify_data.py` 判定通过（退出码 0）。**唯一新发现的两个口径问题**已写入
+`docs/接口约定.md` 第十节：`week=15` 是期末结算周（默认周改为第 8 周）、`avg_score` 因剔除退学可能为 `null`。

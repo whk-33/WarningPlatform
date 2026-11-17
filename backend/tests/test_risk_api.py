@@ -289,3 +289,75 @@ def test_student_meta_missing_returns_null_not_500(admin_headers, client, monkey
     item = resp.json()["data"]["items"][0]
     assert item["student_name"] is None
     assert item["stu_id"]
+
+
+# ---------------------------------------------------------------- 真实数据下的口径
+# 下面三例都跑在内存构造的数据上，不依赖真实 parquet，也不走 HTTP。
+
+def _fake_repo_with_weeks(weeks=(0, 8, 14, 15)):
+    """造一个只有周次的最小 RiskRepo，用来验证默认周策略。"""
+    import pandas as pd
+    from app.data.risk_repo import REQUIRED_COLUMNS, RiskRepo
+
+    df = pd.DataFrame([
+        {"stu_id": "stu_1", "course_code": "AAA", "semester": "2014J", "week": w,
+         "risk_prob": 0.1 * w, "risk_level": 1, "risk_level_name": "中",
+         "pred_event_week": -1, "top_factors": "[]"}
+        for w in weeks
+    ], columns=REQUIRED_COLUMNS)
+
+    repo = RiskRepo.__new__(RiskRepo)
+    repo.source = "parquet"
+    repo.path = None
+    repo._df = repo._normalize(df)
+    repo._sample_based = False
+    repo._expected_total = None
+    repo._default_week = None      # 关键：parquet 来源没有导出周
+    repo._mock_stat = None
+    repo._meta = {}
+    return repo
+
+
+def test_default_week_prefers_midterm_not_settlement_week():
+    """默认周不能取最大值：week15 是期末结算周，高危率会比 w14 突增 20pp 以上。"""
+
+    repo = _fake_repo_with_weeks()
+    assert repo.resolve_week(None, "2014J") == 8
+
+
+def test_default_week_honours_env_override(monkeypatch):
+    from app.data.risk_repo import RiskRepo
+
+    repo = _fake_repo_with_weeks()
+    monkeypatch.setenv("WP_DEFAULT_WEEK", "14")
+    assert repo.resolve_week(None, "2014J") == 14
+    # 传了非法值就回落到期中，不能炸
+    monkeypatch.setenv("WP_DEFAULT_WEEK", "abc")
+    assert RiskRepo.resolve_week(repo, None, "2014J") == 8
+
+
+def test_student_meta_matches_prefixed_and_plain_ids(monkeypatch):
+    """主数据 stu_num=11391、风险数据 stu_id=stu_11391，别名没登记就会「有学生没姓名」。"""
+
+    import pandas as pd
+    import app.data.repo as old_repo
+
+    students = pd.DataFrame([{
+        "stu_num": 11391, "student_no": 130189, "stu_id": "stu_11391",
+        "student_name": "徐逸飞", "major_name": "计算机科学与技术", "class_name": "计科1301班",
+    }])
+
+    class _Fake:
+        pass
+
+    fake = _Fake()
+    fake.students = students
+    monkeypatch.setattr(old_repo, "get_repo", lambda: fake)
+
+    repo = _fake_repo_with_weeks()
+    repo._load_meta()
+
+    for key in ("stu_11391", "11391", "130189", "stu_130189"):
+        info = repo._student_meta(key)
+        assert info["student_name"] == "徐逸飞", f"{key} 没匹配到姓名"
+    assert repo._student_meta("stu_999999")["student_name"] is None

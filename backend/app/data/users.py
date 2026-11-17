@@ -116,6 +116,31 @@ def sync(
     return created
 
 
+def reset_passwords(password: str, accounts: list[str] | None = None) -> int:
+    """把账号密码重置为 `password`，返回受影响条数。
+
+    `sync()` 故意不覆盖已有账号的密码（免得每次启动冲掉人工改过的密码），
+    所以「换过 WP_DEMO_PASSWORD」或「账号由旧配置建出来」时，需要显式调这里。
+    `accounts=None` 表示全表重置。
+    """
+
+    init_db()
+    hashed = hash_password(password)
+
+    with _connect() as conn:
+        if accounts is None:
+            cur = conn.execute("UPDATE sys_user SET password = ?", (hashed,))
+        else:
+            if not accounts:
+                return 0
+            placeholders = ",".join("?" for _ in accounts)
+            cur = conn.execute(
+                f"UPDATE sys_user SET password = ? WHERE account IN ({placeholders})",
+                (hashed, *accounts),
+            )
+    return int(cur.rowcount or 0)
+
+
 def get_by_account(account: str, role: str) -> Optional[sqlite3.Row]:
     with _connect() as conn:
         row = conn.execute(

@@ -72,3 +72,9 @@ lib/
 
 # ========== 私有实施指南（本地保留） ==========
 docs/阶段一_算法工程师实施指南.md
+
+# ========== 阶段四真实产物（体积大，不入库） ==========
+# 28,785 学生 / 14 MB risk_scores / 5 MB graph_api，走网盘分发；
+# 放置位置见 backend/README「全量真实数据接入」，或设 WP_INTERIM / WP_PROCESSED / WP_GRAPH
+algorithm/data/interim/interim_demo/
+algorithm/data/processed/processed_full_demo/

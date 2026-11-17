@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from pathlib import Path
 from typing import Any
 
@@ -120,13 +121,27 @@ class RiskRepo:
 
             students = get_repo().students
             cols = set(students.columns)
-            if "stu_num" in cols:
+            if "stu_id" in cols or "stu_num" in cols:
                 for row in students.itertuples(index=False):
-                    meta[str(getattr(row, "stu_num"))] = {
+                    info = {
                         "student_name": str(getattr(row, "student_name", "") or "") or None,
                         "major_name": str(getattr(row, "major_name", "") or "") or None,
                         "class_name": str(getattr(row, "class_name", "") or "") or None,
                     }
+                    # 风险数据的 stu_id 形如 `stu_11391`（= stu_<stu_num>），而主数据里
+                    # stu_num 是 `11391`、student_no 是 `130189`，三套写法混在一起。
+                    # 这列全登记上，否则会出现"学生明明在库里、风险榜却补不到姓名"。
+                    keys: set[str] = set()
+                    for col in ("stu_id", "stu_num", "student_no"):
+                        if col not in cols:
+                            continue
+                        val = getattr(row, col)
+                        if val is None or str(val) in ("", "nan", "None"):
+                            continue
+                        keys.add(str(val))
+                        keys.add(f"stu_{val}")
+                    for k in keys:
+                        meta.setdefault(k, info)
         except Exception as exc:  # 主数据没加载好不影响风险接口
             log.debug("主数据姓名映射不可用：%s", exc)
 
@@ -137,17 +152,19 @@ class RiskRepo:
                 for stu_id, info in (payload.get("students") or {}).items():
                     if not isinstance(info, dict):
                         continue
-                    meta[str(stu_id)] = {
+                    # 主数据优先：真实产物到位后，合成姓名只补主数据里没有的人
+                    meta.setdefault(str(stu_id), {
                         "student_name": info.get("student_name"),
                         "major_name": info.get("major_name"),
                         "class_name": info.get("class_name"),
-                    }
+                    })
             except Exception as exc:
                 log.warning("读取 %s 失败，风险榜将没有姓名：%s", path, exc)
 
         self._meta = meta
         if meta:
-            log.info("风险学生姓名映射 %d 条（来源：主数据 + %s）", len(meta), META_NAME)
+            log.info("风险学生姓名映射 %d 个键（含 stu_id / stu_num / student_no 别名，来源：主数据 + %s）",
+                     len(meta), META_NAME)
 
     def _student_meta(self, stu_id: str) -> dict[str, str | None]:
         info = self._meta.get(str(stu_id)) or {}
@@ -255,18 +272,33 @@ class RiskRepo:
         return sub
 
     def resolve_week(self, week: int | None, semester: str) -> int:
-        """缺省周次：mock 跟导出周一致，parquet 取该学期已产出的最大周（最新跑批）。"""
+        """缺省周次。
+
+        优先级：显式传参 → mock 导出周（真实分布随样本走）→ `WP_DEFAULT_WEEK`
+        → 第 8 周（期中）。
+
+        **为什么不取最大周**：`risk_scores` 的最后一周年限（实测 4 个学期都是 week=15）
+        高危率会比前一周突增 20 个百分点以上（2014J：w14=31.9% → w15=53.3%），
+        因为它几乎等价于"期末成绩已定"。把这种周当默认，等于让平台"考完才预警"，
+        而且风险榜首页会显示 53% 的学生高危，把老师吓一跳。默认取期中更符合预警语义。
+        """
 
         if week is not None:
             if not 0 <= week <= 15:
                 raise ApiError(400, f"week 取值范围 0-15（0 起，前端展示时 +1），收到 {week}")
             return week
-        weeks = self._df.loc[self._df["semester"] == semester, "week"]
-        if weeks.empty:
+
+        weeks = sorted({int(w) for w in self._df.loc[self._df["semester"] == semester, "week"].unique()})
+        if not weeks:
             raise ApiError(404, f"学期 {semester} 没有风险数据")
-        if self._default_week is not None and bool((weeks == self._default_week).any()):
+        if self._default_week is not None and self._default_week in weeks:
             return self._default_week
-        return int(weeks.max())
+
+        override = (os.getenv("WP_DEFAULT_WEEK") or "").strip()
+        if override.isdigit() and int(override) in weeks:
+            return int(override)
+
+        return 8 if 8 in weeks else weeks[max(0, len(weeks) - 2)]
 
     def _row_payload(self, row: pd.Series) -> dict:
         level = int(row["risk_level"])
@@ -380,6 +412,8 @@ class RiskRepo:
             "page": page,
             "size": size,
             "total": total,
+            # 与 total 同值（全量数据能翻到底）；保留该字段是为了让前端只用一套分页逻辑
+            "list_available": total,
             "items": items,
             "data_source": self.source,
             "sample_based": self._sample_based,
@@ -427,30 +461,42 @@ class RiskRepo:
             "alert_rate": round((level_1 + level_2) / total, 4) if total else 0.0,
             "data_source": self.source,
             "sample_based": self._sample_based,
+            # 全量数据下列表也能翻到底，两个数相等；前端统一按 list_available 算分页上限即可
+            "list_available": total,
         }
 
     # ---------------------------------------------------------------- 元信息
 
-    def demo_student(self) -> dict | None:
+    def demo_student(self, semester: str | None = None) -> dict | None:
         """挑一个"最适合演示"的学生：曲线周数最多，同周数时风险概率最高。
 
-        mock 下会选中 `stu_100621`（唯一有完整 16 周曲线的学生），
-        换成真实 parquet 后自动变成全量里曲线最完整的学生，不用改代码。
+        **必须限定在默认学期内**：账号绑定的学生如果只有别的学期的数据，
+        学生端用默认学期查自己就会 404（`student_curve` 默认取 current_semester）。
         只给账号同步用（`users.sync`），不进任何接口响应。
         """
 
         if self._df.empty:
             return None
+
+        sem = semester or self.current_semester
+        sub = self._df[self._df["semester"] == sem] if sem else self._df
+        if sub.empty:
+            sub = self._df
+
         grouped = (
-            self._df.groupby(["stu_id", "semester"])
+            sub.groupby(["stu_id", "semester"])
             .agg(weeks=("week", "nunique"), peak=("risk_prob", "max"),
                  course_code=("course_code", "first"))
             .reset_index()
-            .sort_values(["weeks", "peak"], ascending=[False, False])
         )
+        # 单个点的曲线演示不出折线，优先挑曲线完整的
+        complete = grouped[grouped["weeks"] >= 2]
+        if not complete.empty:
+            grouped = complete
         if grouped.empty:
             return None
-        top = grouped.iloc[0]
+
+        top = grouped.sort_values(["weeks", "peak"], ascending=[False, False]).iloc[0]
         return {
             "stu_id": str(top["stu_id"]),
             "semester": str(top["semester"]),

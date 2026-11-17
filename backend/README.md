@@ -239,3 +239,55 @@ export function getRiskStat(params) {
 5. **推理层是规则**：`services.py` 的因子和建议都是规则产出，模型上线后只换实现、不动字段。
 6. **阶段四风险接口目前跑在 mock 样本上**：`risk_scores.parquet` 被 `.gitignore` 忽略，仓库里没有。mock 仅 35 行（top20 高危 + 一个学生的 16 周曲线），所以列表只能翻到 20 条、低/中风险筛选为空。真实文件到位后改 `WP_PROCESSED` 即可，代码不用动。
 7. **未接推理桥**（契约 B6）：新学生不在 `risk_scores` 里时直接 404，没有 `subprocess` 调 `30_online_risk.py`。等算法侧确认部署环境能 `import torch` 再接，避免后端进程被 torch DLL 拖挂。
+
+---
+
+## 全量真实数据接入（2026-11-17）
+
+### 数据放哪
+
+代码按 `config.py` 的候选顺序探测，**第一候选就是 `algorithm/data/oulad/<名字>`**：
+
+```
+algorithm/data/oulad/interim_demo/            主数据 28,785 学生（12 张表）
+algorithm/data/oulad/processed_full_demo/     risk_scores.parquet + graph_api.json
+algorithm/data/oulad/processed_demo/          （旧目录，可不存在）
+```
+
+`algorithm/data/oulad/` 在 `.gitignore` 里，新机器 clone 后必然为空、程序会静默回落到
+200 人合成集（姓名形如「学生0096」）。所以要么把目录放进去，要么设环境变量
+`WP_INTERIM` / `WP_PROCESSED` / `WP_GRAPH` 指过去。
+
+> 本机当前是把文件放在 `algorithm/data/interim/interim_demo` 与
+> `algorithm/data/processed/processed_full_demo`，再在两个默认位置上建 **目录联接（junction）**
+> 指过去，这样默认探测就能命中，**不用配任何环境变量**。缺点是换机器要重建联接；
+> 想更省事就直接把目录放到 `algorithm/data/oulad/` 下。
+>
+> 注意：`config.py` 目前**没有**调用 `load_dotenv()`，所以把变量写进 `backend/.env` 不会生效，
+> 必须用系统环境变量或启动脚本 export。
+
+### 起服务前的三步体检
+
+```bash
+python scripts/verify_data.py        # 数据源：学生数应 28785、两套 ID 交集应=学生数、退出码 0
+python -m uvicorn app.main:app --port 8000
+python scripts/smoke_api.py          # 全接口冒烟：16 项，含旧 15 个 + 风险 5 个 + 边界
+```
+
+### 几个口径要知道
+
+| 项 | 说明 |
+|---|---|
+| 默认周次 | **第 8 周（期中）**，不是最新周。`week=15` 是期末结算周，4 个学期的高危率都比 w14 突增 20pp 以上（2014J：31.9% → 53.3%），拿它当默认等于"考完才预警"。要改设 `WP_DEFAULT_WEEK` |
+| `avg_score` | 口径为"剔除退学"。某生当学期全部课程退学时为 `null`；高危榜按风险降序、退学学生排前面，所以首页常见 `null`，属预期 |
+| `list_available` | 全量数据下与 `total` 相等；mock 下才不等 |
+| 演示账号 | `riskdemo` 仍会自动绑到曲线最完整的风险学生，但**已非必需**——两套 ID 同源后，普通学号账号（如 `130045`）自己就能查到曲线 |
+| 密码登不上 | `users.sync()` 不覆盖已有账号密码（防止冲掉人工改过的）。换过 `WP_DEMO_PASSWORD` 后跑 `python scripts/reset_demo_passwords.py --all` |
+
+### 脚本清单
+
+| 脚本 | 用途 |
+|---|---|
+| `scripts/verify_data.py` | 数据源体检：命中哪个目录、学生数、两套 ID 交集、图产物来源，退出码 0/1 |
+| `scripts/smoke_api.py` | 全接口冒烟，需服务已启动；`--base` 指定地址，退出码 1 表示有异常 |
+| `scripts/reset_demo_passwords.py` | 把演示账号密码重置为当前 `WP_DEMO_PASSWORD`，`--all` 含学生账号 |
