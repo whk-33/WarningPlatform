@@ -46,6 +46,12 @@ REQUIRED_COLUMNS = (
 
 LEVEL_NAMES = {0: "低", 1: "中", 2: "高"}
 
+# 可选字段：有就用，没有就回退代理。`risk_state=1` 表示事件已发生（算法侧口径），
+# `risk_score` 是模型侧的连续排序分（避免单课学生只有 0/0.5/1 三档无法排序）。
+# 当前导出的 parquet 只有上面 9 列，这两列都还没有，所以不能放进 REQUIRED_COLUMNS，
+# 否则读取会直接报字段缺失。
+OPTIONAL_COLUMNS = ("risk_state", "risk_score", "risk_event_time")
+
 
 def _parse_factors(raw: Any) -> list[dict]:
     """top_factors 在 parquet 里是 JSON 字符串（B5），在这里统一解析成数组。
@@ -178,7 +184,8 @@ class RiskRepo:
         missing = [c for c in REQUIRED_COLUMNS if c not in df.columns]
         if missing:
             raise ValueError(f"risk_scores 缺少字段 {missing}，请对照契约 §2 核对")
-        out = df[list(REQUIRED_COLUMNS)].copy()
+        keep = list(REQUIRED_COLUMNS) + [c for c in OPTIONAL_COLUMNS if c in df.columns]
+        out = df[keep].copy()
         out["stu_id"] = out["stu_id"].astype(str)
         out["course_code"] = out["course_code"].astype(str)
         out["semester"] = out["semester"].astype(str)
@@ -187,6 +194,10 @@ class RiskRepo:
         out["risk_level"] = out["risk_level"].astype("int64")
         out["pred_event_week"] = out["pred_event_week"].astype("int64")
         out["risk_level_name"] = out["risk_level_name"].astype(str)
+        if "risk_state" in out.columns:
+            out["risk_state"] = out["risk_state"].astype("int64")
+        if "risk_score" in out.columns:
+            out["risk_score"] = out["risk_score"].astype("float64")
         # top_factors 保持原始字符串，取行时再解析：50 万行全量 json.loads 会让启动慢十几秒
         return out
 
@@ -472,6 +483,9 @@ class RiskRepo:
         level_2 = int(counts.get(2, 0))
         total = level_0 + level_1 + level_2
 
+        occurred, occurred_source = self._occurred_mask(sub)
+        breakdown = self._pool_breakdown(student_level, occurred, total)
+
         return {
             "semester": sem,
             "week": wk,
@@ -486,6 +500,66 @@ class RiskRepo:
             "list_available": total,
             # 聚合前的「学生-课程对」记录数，用于和 /list 的原始行数对账
             "record_total": record_total,
+            # ---- 已发生 / 风险池拆分（算法侧 11-17 口径）----
+            **breakdown,
+            "occurred_source": occurred_source,
+        }
+
+    def _occurred_mask(self, sub: pd.DataFrame) -> tuple[pd.Series, str]:
+        """标出「事件已发生」的学生，返回 (按 stu_id 的布尔序列, 判定来源)。
+
+        算法侧口径：`prob = 1.0` 的行 100% 是已发生事件（`risk_event_time <= week`），
+        这批人不算模型预测，应从预警率分母里拆出去，单独展示为"已发生"。
+
+        优先用权威字段 `risk_state`（=1 即已发生）；当前导出的 parquet 只有 9 列、
+        没有该字段，故回退到 `risk_prob >= 1.0` 代理。代理的可靠性有旁证：
+        剔除后风险池 `risk_prob` 最大值恰为 0.9981、池内无一人等于 1.0，
+        与算法侧给出的数字完全一致。
+        """
+
+        if "risk_state" in sub.columns:
+            mask = sub["risk_state"].astype("int64") == 1
+            source = "risk_state"
+        else:
+            mask = sub["risk_prob"] >= 1.0
+            source = "prob_proxy"
+        # 一个学生有多门课，任一门已发生即算已发生
+        return mask.groupby(sub["stu_id"]).any(), source
+
+    def _pool_breakdown(
+        self, student_level: pd.Series, occurred: pd.Series, total: int
+    ) -> dict:
+        """把学生拆成「已发生」与「风险池」两拨，各算预警率。
+
+        算法侧要求的全表口径：
+            全表预警率 = 已发生占比 + 风险池预警率 × (1 − 已发生占比)
+        即风险池里按 15% 卡阈值，已发生的全部计入。这里把两个分量都透出来，
+        前端既能显示总预警率，也能解释"其中多少是已经出事的"。
+        """
+
+        occurred = occurred.reindex(student_level.index).fillna(False).astype(bool)
+        occurred_count = int(occurred.sum())
+        pool_level = student_level[~occurred]
+
+        pool_total = int(len(pool_level))
+        pool_alert = int((pool_level > 0).sum())
+        # 用未舍入的比率算合成值，否则先舍入再代入会差 0.01pp（例如 w5 的 31.17 vs 31.16）
+        occurred_r = occurred_count / total if total else 0.0
+        pool_r = pool_alert / pool_total if pool_total else 0.0
+        combined = round(occurred_r + pool_r * (1 - occurred_r), 4)
+        occurred_rate = round(occurred_r, 4)
+        pool_alert_rate = round(pool_r, 4)
+
+        return {
+            "occurred_count": occurred_count,
+            "occurred_rate": occurred_rate,
+            "risk_pool_count": pool_total,
+            "pool_alert_count": pool_alert,
+            "pool_alert_rate": pool_alert_rate,
+            "pool_level_0": int((pool_level == 0).sum()),
+            "pool_level_1": int((pool_level == 1).sum()),
+            "pool_level_2": int((pool_level == 2).sum()),
+            "alert_rate_combined": combined,
         }
 
     # ---------------------------------------------------------------- 元信息

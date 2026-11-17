@@ -55,6 +55,16 @@ def home_stat(
         "normal_count": normal,
         "risk_distribute": {"高危": high, "警惕": mid, "正常": normal},
         "warn_rate": stat["alert_rate"],
+        # ---- 已发生 / 风险池拆分（算法侧 11-17 口径）----
+        # 全表预警率 = 已发生占比 + 风险池预警率 ×(1−已发生占比)。
+        # 只看 warn_rate 会把"已经出事的"和"模型预测会出事的"混成一个数，
+        # 老师看到 34.6% 会以为模型误报率高，其实是 24.7% 已经发生了。
+        "occurred_count": stat.get("occurred_count"),
+        "occurred_rate": stat.get("occurred_rate"),
+        "risk_pool_count": stat.get("risk_pool_count"),
+        "pool_alert_count": stat.get("pool_alert_count"),
+        "pool_alert_rate": stat.get("pool_alert_rate"),
+        "occurred_source": stat.get("occurred_source"),
         # ---- 新增：把口径本身透出去，避免"两个接口数字不同"的猜测 ----
         "week": stat["week"],
         "caliber": f"model_week{stat['week']}",
