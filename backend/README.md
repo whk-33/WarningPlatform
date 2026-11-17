@@ -83,6 +83,18 @@ algorithm/data/oulad/processed_demo/risk_scores.parquet
 
 真实 parquet 到位后（`WP_PROCESSED` 指过去即可），`total / list_available / sample_based` 会自动变成全量口径，接口字段不用改。
 
+### 换数据 / 部署后先跑体检
+
+```bash
+cd backend && python scripts/verify_data.py
+```
+
+一条命令打印：interim 三个候选谁命中、主数据是合成还是真实、风险分走的是 parquet 还是 mock、
+两套 ID 的交集、图产物用的是哪一份，最后给结论和该拷什么。**退出码 0 才代表可以演示。**
+
+正常（真实产物到位）应该是：`学生数 28785`、`交集 = 学生数`、`source = parquet`。
+若显示 `学生数 200` / `姓名「学生xxxx」` / `交集 0`，就是又跑在合成集上了，见 `docs/问题_学生ID不统一.md`。
+
 ## 目录
 
 ```

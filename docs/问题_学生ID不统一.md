@@ -81,23 +81,32 @@ algorithm/data/public/
 
 ## 3. 解法
 
-### 方案 A（推荐，零改码）：把算法产物拷到后端机器
+### 方案 A（已采纳，零改码）：把算法产物拷到后端机器
 
 `backend/app/config.py` 已经预留了环境变量，**代码不用动**：
 
 ```bash
-# 1) 拷贝（走网盘/U 盘，不要指望 git）
-#    algorithm/data/oulad/interim_demo/            6.7 MB，12 张表
-#    algorithm/data/oulad/processed_full_demo/     risk_scores.parquet 13.7 MB
-#    目标：D:\WarningPlatform\algorithm\data\oulad\
+# 1) 拷贝（走网盘/U 盘，不要指望 git），目标 D:\WarningPlatform\algorithm\data\oulad\
+#    ├── interim_demo/                       6.7 MB，12 张表          ← 主数据
+#    └── processed_full_demo/
+#         ├── risk_scores.parquet           13.7 MB                  ← 风险分
+#         └── graph_api.json                约 5 MB                  ← 图（有就一起拷）
 
 # 2) 指向目录后重启
 export WP_INTERIM=D:/WarningPlatform/algorithm/data/oulad/interim_demo
 export WP_PROCESSED=D:/WarningPlatform/algorithm/data/oulad/processed_full_demo
 # 或者直接在 backend/.env 里写这两行，改完重启 uvicorn
+
+# 3) 体检（在 backend 目录下）
+python scripts/verify_data.py
 ```
 
 `WP_INTERIM` / `WP_PROCESSED` 在 `config.py:37` 与 `config.py:48` 已支持（`.env.example` 里也有注释示例），设了就会优先于默认路径。
+
+> **必须成套换**：现在图产物也是 200 人那套（`processed/graph_nx.json`，1141 节点 / 200 个学生）。
+> 只换主数据和风险分、不换图，会出现新错配——主数据 28785 人，图里只有 200 个学生节点，图页面点谁都对不上。
+> 好消息是 `config.graph_candidates` 第一候选就是 `processed_full_demo/graph_api.json`，把文件放进去会自动优先使用。
+> **所以向算法要文件时要多问一句：`processed_full_demo/` 里有没有 `graph_api.json`？** 没有就需要它生成一份。
 
 ### 方案 B（演示必须小数据集时）：生成 200 人自洽子集
 
