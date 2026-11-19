@@ -336,13 +336,24 @@ def predict_one(stu_id: str, course_code: str, semester: str, week: int) -> dict
 
 
 def predict_student(stu_id: str, semester: str) -> list[dict]:
-    """学生全学期 16 周风险曲线（聚合所有课程 → 取 max risk_level）。"""
+    """学生全学期 16 周风险曲线（聚合所有课程 → 取 max risk_level）。
+
+    已有样本：取该学生所有课程，逐周逐门预测取最坏。
+    新学生（parquet 里找不到）：取该学期最常见课程，走 _build_panel_one 的伪面板兜底。
+    """
     processed = _find_processed()
     weekly = pd.read_parquet(processed / "tft_weekly.parquet")
     sub = weekly[(weekly["stu_id"] == stu_id) & (weekly["semester"] == semester)]
-    if sub.empty:
-        return []
-    courses = sorted(sub["course_code"].unique().tolist())
+
+    if not sub.empty:
+        courses = sorted(sub["course_code"].unique().tolist())
+    else:
+        # 新学生兜底：同学期出现次数最多的 1 门课，让 _build_panel_one 构造伪面板
+        sem_pool = weekly[weekly["semester"] == semester]
+        if sem_pool.empty:
+            return []
+        top_course = sem_pool["course_code"].value_counts().idxmax()
+        courses = [top_course]
 
     # 逐周取最大风险（多门课取最坏那门）
     weekly_results: dict[int, dict] = {}
