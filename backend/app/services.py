@@ -129,9 +129,13 @@ def build_report(repo, warn: dict) -> dict:
             f"{student['fail_count']} 门不及格。"
         )
     else:
+        avg = student.get("avg_score")
+        # 全学期课程都退学时 avg_score 为 None（口径剔除退学），不能把 None 拼进文案
+        avg_text = f"当学期平均分 {avg}。" if avg is not None else \
+            f"当学期 {student['course_count']} 门课全部退学，无有效成绩。"
         summary = (
             f"{student['name']} 在《{warn['course_name']}》上判定为{warn['risk_level_text']}，"
-            f"当学期平均分 {student['avg_score']}。"
+            f"{avg_text}"
         )
 
     return {

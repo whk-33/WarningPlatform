@@ -200,6 +200,65 @@ def test_admin_stat_alert_rate_is_real_not_sample(client, admin_headers):
     assert data["total"] > 1000
 
 
+# ---------------------------------------------------------------- 首页口径统一
+
+HOME_LEGACY_FIELDS = ("total_student", "warn_count", "high_count", "mid_count",
+                      "normal_count", "risk_distribute", "warn_rate")
+
+
+def test_home_stat_shares_caliber_with_risk_stat(client, admin_headers):
+    """v1.3 起首页与风险统计同源，数字必须逐项相等。
+
+    历史问题：home/stat 走规则式整学期结算（51.4%），risk/stat 走模型第 8 周（34.7%），
+    差值 16.7pp，同一块看板上并列展示必然被问「到底哪个对」。
+    """
+
+    home = client.get("/api/admin/home/stat", headers=admin_headers).json()["data"]
+    risk = client.get("/api/admin/risk/stat", headers=admin_headers).json()["data"]
+
+    assert home["semester"] == risk["semester"]
+    assert home["week"] == risk["week"]
+    assert home["total_student"] == risk["total"]
+    assert home["high_count"] == risk["level_2"]
+    assert home["mid_count"] == risk["level_1"]
+    assert home["normal_count"] == risk["level_0"]
+    assert home["warn_count"] == risk["level_1"] + risk["level_2"]
+    assert abs(home["warn_rate"] - risk["alert_rate"]) < 1e-9
+    assert home["caliber"] == f"model_week{risk['week']}"
+
+
+def test_home_stat_keeps_legacy_field_names(client, admin_headers):
+    """前端 Home.vue 已在用旧字段，改口径不能改字段名，否则联调返工。"""
+
+    home = client.get("/api/admin/home/stat", headers=admin_headers).json()["data"]
+    for field in HOME_LEGACY_FIELDS:
+        assert field in home, f"丢掉旧字段 {field} 会打断前端"
+
+
+def test_home_stat_rejects_bad_week(client, admin_headers):
+    assert client.get("/api/admin/home/stat?week=0", headers=admin_headers).status_code == 422
+    assert client.get("/api/admin/home/stat?week=99", headers=admin_headers).status_code == 422
+
+
+def test_student_avg_score_null_has_explicit_reason(client, admin_headers):
+    """avg_score 为 None 时必须同时给出 has_valid_score=False。
+
+    真实数据里 32.5% 的学生当学期所有课程都退学，剔除退学后无有效成绩，
+    avg_score 天然为空。不解释清楚，前端只能各自猜「是缺数据还是 0 分」。
+    """
+
+    data = client.get("/api/admin/student/list?page=1&page_size=50",
+                      headers=admin_headers).json()["data"]
+
+    for item in data["list"]:
+        assert "has_valid_score" in item
+        assert "valid_course_count" in item
+        # 两者必须自洽：有有效成绩 ⇔ avg_score 非空
+        assert item["has_valid_score"] == (item["avg_score"] is not None)
+        if not item["has_valid_score"]:
+            assert item["valid_course_count"] == 0
+
+
 # ---------------------------------------------------------------- 风险演示账号
 
 def test_risk_demo_account_can_read_own_curve(client):
@@ -245,3 +304,119 @@ def test_risk_demo_account_survives_resync(client):
     row = users.get_by_account(settings.risk_demo_account, "student")
     assert row is not None, "riskdemo 被当成过期账号删掉了"
     assert str(row["stu_id"]) == str(demo["stu_id"])
+
+
+# ---------------------------------------------------------------- 学生姓名补全
+
+def test_admin_risk_list_carries_student_name(client, admin_headers):
+    """风险榜要能独立成表：姓名/专业/班级由 risk 接口自带，前端不必再 join 旧学生列表。
+
+    风险分数据 9 个冻结字段里没有姓名，后端从主数据 + docs/mock_api/student_meta.json 补。
+    """
+
+    resp = client.get("/api/admin/risk/list?size=3", headers=admin_headers)
+    assert resp.status_code == 200, resp.text
+
+    item = resp.json()["data"]["items"][0]
+    for key in ("student_name", "major_name", "class_name"):
+        assert key in item, f"列表项缺少字段 {key}，前端又要回头 join 一次"
+    assert item["student_name"], "mock 下姓名不应为空"
+
+
+def test_student_curve_carries_student_name(client, admin_headers):
+    """弹窗标题要显示"王雨桐 · 大数据2201"，曲线接口得自己带姓名。"""
+
+    resp = client.get("/api/risk/student/stu_100621", headers=admin_headers)
+    assert resp.status_code == 200, resp.text
+
+    data = resp.json()["data"]
+    assert data["student_name"]
+    assert data["class_name"]
+
+
+def test_student_meta_missing_returns_null_not_500(admin_headers, client, monkeypatch):
+    """姓名映射缺人时要返回 null，不能 500 —— 姓名只是展示字段，不该拖垮风险榜。"""
+
+    from app.data.risk_repo import get_risk_repo
+
+    repo = get_risk_repo()
+    monkeypatch.setattr(repo, "_meta", {})
+
+    resp = client.get("/api/admin/risk/list?size=2", headers=admin_headers)
+    assert resp.status_code == 200, resp.text
+
+    item = resp.json()["data"]["items"][0]
+    assert item["student_name"] is None
+    assert item["stu_id"]
+
+
+# ---------------------------------------------------------------- 真实数据下的口径
+# 下面三例都跑在内存构造的数据上，不依赖真实 parquet，也不走 HTTP。
+
+def _fake_repo_with_weeks(weeks=(0, 8, 14, 15)):
+    """造一个只有周次的最小 RiskRepo，用来验证默认周策略。"""
+    import pandas as pd
+    from app.data.risk_repo import REQUIRED_COLUMNS, RiskRepo
+
+    df = pd.DataFrame([
+        {"stu_id": "stu_1", "course_code": "AAA", "semester": "2014J", "week": w,
+         "risk_prob": 0.1 * w, "risk_level": 1, "risk_level_name": "中",
+         "pred_event_week": -1, "top_factors": "[]"}
+        for w in weeks
+    ], columns=REQUIRED_COLUMNS)
+
+    repo = RiskRepo.__new__(RiskRepo)
+    repo.source = "parquet"
+    repo.path = None
+    repo._df = repo._normalize(df)
+    repo._sample_based = False
+    repo._expected_total = None
+    repo._default_week = None      # 关键：parquet 来源没有导出周
+    repo._mock_stat = None
+    repo._meta = {}
+    return repo
+
+
+def test_default_week_prefers_midterm_not_settlement_week():
+    """默认周不能取最大值：week15 是期末结算周，高危率会比 w14 突增 20pp 以上。"""
+
+    repo = _fake_repo_with_weeks()
+    assert repo.resolve_week(None, "2014J") == 8
+
+
+def test_default_week_honours_env_override(monkeypatch):
+    from app.data.risk_repo import RiskRepo
+
+    repo = _fake_repo_with_weeks()
+    monkeypatch.setenv("WP_DEFAULT_WEEK", "14")
+    assert repo.resolve_week(None, "2014J") == 14
+    # 传了非法值就回落到期中，不能炸
+    monkeypatch.setenv("WP_DEFAULT_WEEK", "abc")
+    assert RiskRepo.resolve_week(repo, None, "2014J") == 8
+
+
+def test_student_meta_matches_prefixed_and_plain_ids(monkeypatch):
+    """主数据 stu_num=11391、风险数据 stu_id=stu_11391，别名没登记就会「有学生没姓名」。"""
+
+    import pandas as pd
+    import app.data.repo as old_repo
+
+    students = pd.DataFrame([{
+        "stu_num": 11391, "student_no": 130189, "stu_id": "stu_11391",
+        "student_name": "徐逸飞", "major_name": "计算机科学与技术", "class_name": "计科1301班",
+    }])
+
+    class _Fake:
+        pass
+
+    fake = _Fake()
+    fake.students = students
+    monkeypatch.setattr(old_repo, "get_repo", lambda: fake)
+
+    repo = _fake_repo_with_weeks()
+    repo._load_meta()
+
+    for key in ("stu_11391", "11391", "130189", "stu_130189"):
+        info = repo._student_meta(key)
+        assert info["student_name"] == "徐逸飞", f"{key} 没匹配到姓名"
+    assert repo._student_meta("stu_999999")["student_name"] is None

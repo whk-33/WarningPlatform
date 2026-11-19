@@ -7,7 +7,11 @@ FastAPI + pandas 实现，对外提供两套并行接口：
 | 阶段一业务接口 | [`../docs/接口约定.md`](../docs/接口约定.md) | 15 | `interim/*.parquet`（学生×课程成绩、行为日志） |
 | 阶段四风险分接口 | [`../docs/阶段四_风险接口契约.md`](../docs/阶段四_风险接口契约.md) | 5 | `risk_scores.parquet`（周级风险分，缺失时用 `docs/mock_api/*.json`） |
 
-两套**并行不替换**（契约 B3）：阶段四的 `risk_level` 是周级模型口径，阶段一的是学期末成绩口径；前端对比验收后再决定是否切换。
+接口层面两套**并行不替换**（契约 B3）：阶段四的 `risk_level` 是周级模型口径，阶段一的是学期末成绩口径。
+
+**但展示口径已于 v1.3 合并**：`/admin/home/stat` 现在内部委托 `/admin/risk/stat`，
+首页/看板只出现模型口径一套数字；规则式结算口径退居"期末回顾"用途，
+不再作为任何页面的主指标（原因见 `docs/接口约定.md` §11.1）。
 
 **设计前提：不依赖 PostgreSQL / MySQL，也不强依赖算法产物。** 启动时自动探测数据源，读不到就用兜底数据起飞，`/api/health` 会明确告诉你当前用的是哪一种。
 
@@ -45,6 +49,11 @@ algorithm/data/interim              ← 阶段一 mock 数据（29 万行那套�
 （都不存在）→ 内置演示数据：200 学生 / 5 课程 / 约 1000 条成绩
 ```
 
+> ⚠️ **前两个目录被 `.gitignore` 忽略（`algorithm/data/oulad/`），clone/pull 拿不到，必须手工拷贝**。
+> 只拷 `risk_scores.parquet` 而不拷 `interim_demo/` 会出现「主数据 200 人、风险数据 28785 人」的错配，
+> 表现为学生详情弹窗的风险曲线全部 `404`（见 `docs/问题_学生ID不统一.md`）。
+> **一眼判断**：`/api/health` 的 `students` 等于 200 就是跑在合成集上，应为 28785。
+
 也可以用环境变量直接指定：
 
 ```bash
@@ -74,8 +83,21 @@ algorithm/data/oulad/processed_demo/risk_scores.parquet
 | `/admin/risk/stat` 的 `total: 7804` | 这是算法侧从真实 parquet 导出的全量分布，**与列表条数不一致是正常的** |
 | `list_available: 20` | stat 里额外给出"列表实际能取到多少条"，用来解释上面的不一致 |
 | `partial: true` | 该学生只有单周数据，曲线不完整（mock 中非样本学生都是这种情况） |
+| `student_name` 等 3 个姓名字段 | 风险数据 9 字段里没有姓名，来自 `docs/mock_api/student_meta.json`（**合成数据**，界面上要标"演示数据"）。真实数据到位后若主数据学号能对上，优先用主数据姓名 |
 
 真实 parquet 到位后（`WP_PROCESSED` 指过去即可），`total / list_available / sample_based` 会自动变成全量口径，接口字段不用改。
+
+### 换数据 / 部署后先跑体检
+
+```bash
+cd backend && python scripts/verify_data.py
+```
+
+一条命令打印：interim 三个候选谁命中、主数据是合成还是真实、风险分走的是 parquet 还是 mock、
+两套 ID 的交集、图产物用的是哪一份，最后给结论和该拷什么。**退出码 0 才代表可以演示。**
+
+正常（真实产物到位）应该是：`学生数 28785`、`交集 = 学生数`、`source = parquet`。
+若显示 `学生数 200` / `姓名「学生xxxx」` / `交集 0`，就是又跑在合成集上了，见 `docs/问题_学生ID不统一.md`。
 
 ## 目录
 
@@ -125,7 +147,7 @@ python -m pytest tests/ -q
 | POST | `/api/login/admin` | 管理员登录 |
 | POST | `/api/login/student` | 学生登录 |
 | POST | `/api/logout` | 退出（前端清 token 即可，服务端不维护黑名单） |
-| GET | `/api/admin/home/stat` | 首页统计卡片 + 风险分布 |
+| GET | `/api/admin/home/stat` | 首页统计卡片 + 风险分布（**v1.3 起与 `/admin/risk/stat` 同源同值**） |
 | GET | `/api/admin/student/list` | 学生列表（分页 / 搜索 / 风险筛选） |
 | GET | `/api/admin/student/detail` | 学生详情 + 当学期课程 |
 | GET | `/api/admin/gnn/graph` | 全局学生-课程异质图（默认 top50 高风险） |
@@ -188,12 +210,25 @@ export function getRiskStat(params) {
 
 | 口径 | 位置 |
 |---|---|
-| `risk_level = max(课程级)`、`risk_score = 学分加权/2`、`avg_score` 剔除退学+缺考按 0 | `app/data/repo.py` · `_aggregate_students` |
+| `risk_level = max(课程级)`、`risk_score = 学分加权/2`、`avg_score` 剔除退学+缺考按 0、`has_valid_score = valid_course_count > 0` | `app/data/repo.py` · `risk_table` |
 | `warn_id = W + md5(stu\|course\|sem\|week)[:9]`（幂等） | `app/data/repo.py` · `make_warn_id` |
 | 图裁剪（top N 学生 + 其课程，学生端 1 跳子图） | `app/data/repo.py` · `graph` / `student_subgraph` |
 | 归因因子（规则产出，响应带 `source: "rule"`） | `app/services.py` · `build_factors` |
 | 建议模板 | `app/services.py` · `build_suggestions` |
-| 阶段四周级风险（含 mock 兜底、默认周次、最大 3 个因子） | `app/data/risk_repo.py` |
+| 阶段四周级风险（含 mock 兜底、默认周次、最大 3 个因子、**学生级聚合**） | `app/data/risk_repo.py` · `admin_stat` / `admin_list` |
+| 首页统计（**v1.3 起委托 `risk_repo.admin_stat`，不再走规则式结算**） | `app/api/admin.py` · `home_stat` |
+
+### 三条口径，别混用
+
+| 出口 | 口径 | 单位 | 2014J 实测 |
+|---|---|---|---|
+| `/admin/home/stat`、`/admin/risk/stat` | 模型 · 第 8 周 · 学生级 `max(课程级)` | 人 | **3688 / 10670 = 34.56%** |
+| `/admin/warn/list`、`/admin/warn/report` | 规则式 · 整学期结算 | 学生-课程记录 | 5803 条 |
+| `AdminRepo.stat()`（已弃用于展示） | 规则式 · 整学期结算 | 人 | 5486 / 10670 = 51.42% |
+
+第一行与后两行的差异来自"事中"vs"事后"，不是算法分歧：模型口径第 8 周 34.6%，
+到第 15 周升到 57.4%。期末结算口径不再用于任何首页/看板，理由见
+`docs/接口约定.md` §11.1。
 
 ## 环境变量
 
@@ -221,3 +256,62 @@ export function getRiskStat(params) {
 5. **推理层是规则**：`services.py` 的因子和建议都是规则产出，模型上线后只换实现、不动字段。
 6. **阶段四风险接口目前跑在 mock 样本上**：`risk_scores.parquet` 被 `.gitignore` 忽略，仓库里没有。mock 仅 35 行（top20 高危 + 一个学生的 16 周曲线），所以列表只能翻到 20 条、低/中风险筛选为空。真实文件到位后改 `WP_PROCESSED` 即可，代码不用动。
 7. **未接推理桥**（契约 B6）：新学生不在 `risk_scores` 里时直接 404，没有 `subprocess` 调 `30_online_risk.py`。等算法侧确认部署环境能 `import torch` 再接，避免后端进程被 torch DLL 拖挂。
+
+---
+
+## 全量真实数据接入（2026-11-17，2026-11-19 改为入库）
+
+### 数据放哪：已在仓库里，clone 即可用
+
+真实全量数据包**已提交进 git**，不需要网盘分发、不需要环境变量、不需要目录联接：
+
+```
+algorithm/data/interim/interim_demo/          主数据 28,785 学生 / 12 张表        6.8 MB   已入库
+algorithm/data/processed/processed_full_demo/
+    ├── risk_scores.parquet                   521,488 行 / 4 学期               14 MB    已入库
+    └── graph_api.json                        精简图，优先于 graph_nx（100 MB）   5.2 MB   已入库
+```
+
+`config.py` 的探测顺序是「**真实数据优先、200 人合成集垫底**」：
+
+| 数据 | 探测顺序 |
+|---|---|
+| 主数据 | `interim/interim_demo` → `oulad/interim_demo` → `oulad/interim` → **`algorithm/data/interim`（合成集，末位兜底）** |
+| 风险分 | `processed/processed_full_demo` → `oulad/processed_full_demo` → `oulad/processed_demo` |
+| 图 | `processed/processed_full_demo/graph_api.json` → … → `processed/graph_nx.json` |
+
+> **为什么以前要建 junction**：数据曾经走网盘分发、被 `.gitignore` 排除。别人 clone 后探测链
+> 首项落空，会**静默回退到 `algorithm/data/interim` 里的 200 人合成集**（姓名形如「学生0096」），
+> 2026-11-17 排查了很久才发现根因。现已改为入库、并把合成集降到末位，换机器不会再重演。
+>
+> 仍可用 `WP_INTERIM` / `WP_PROCESSED` / `WP_GRAPH` 覆盖默认路径。注意 `config.py` 目前
+> **没有**调用 `load_dotenv()`，所以写进 `backend/.env` 不生效，必须用系统环境变量或启动脚本 export。
+
+### 起服务前的三步体检
+
+```bash
+python scripts/verify_data.py        # 数据源：学生数应 28785、两套 ID 交集应=学生数、退出码 0
+python -m uvicorn app.main:app --port 8000
+python scripts/smoke_api.py          # 全接口冒烟：16 项，含旧 15 个 + 风险 5 个 + 边界
+```
+
+### 几个口径要知道
+
+| 项 | 说明 |
+|---|---|
+| 默认周次 | **第 8 周（期中）**，不是最新周。`week=15` 是期末结算周，4 个学期的高危率都比 w14 突增 20pp 以上（2014J：31.9% → 53.3%），拿它当默认等于"考完才预警"。要改设 `WP_DEFAULT_WEEK` |
+| `avg_score` | 口径为"剔除退学"。某生当学期全部课程退学时为 `null`（2014J 有 3466 人 / 32.5%）；高危榜按风险降序、退学学生排前面，所以首页常见 `null`，属预期。**v1.3 起同时返回 `has_valid_score` / `valid_course_count`**，前端据此显示「无有效成绩」 |
+| 数据粒度 | `risk_scores.parquet` 是「学生 × 课程 × 周」，一门课一行（2014J 第 8 周 10670 人 / 11260 行）。统计和列表都先按学生聚合，`total` 是人数，去重前行数在 `record_total` |
+| `risk_prob` 的阈值逐周变化 | `level` 就是 `prob` 按**当周**阈值切出来的（w8 为 0.755/0.958），已验证 64 个 (学期,周) 组合复现率 100%。**跨周不可比**：w8 的 0.76 是警惕，w15 的 0.76 是高危（w15 原阈值是算法侧的 bug，已修为沿用 w14） |
+| `prob = 1.0` 是特殊标记位，不是"饱和" | `prob` 打满 1.0 的样本要单拆出去看。剔除后风险池 `max=0.9981`、无 1.0，池内预警率 13.1%–18.4%（目标 15%）。**"这批人是否已发生事件"无法用现有 9 列数据验证**，对外只能讲"剔除打满 1.0 的样本后 13.1%"。`admin_stat` 已透出 `occurred_rate` / `pool_alert_rate`，详见 `docs/接口约定.md` §11.5 |
+| `list_available` | 全量数据下与 `total` 相等；mock 下才不等 |
+| 演示账号 | `riskdemo` 仍会自动绑到曲线最完整的风险学生，但**已非必需**——两套 ID 同源后，普通学号账号（如 `130045`）自己就能查到曲线 |
+| 密码登不上 | `users.sync()` 不覆盖已有账号密码（防止冲掉人工改过的）。换过 `WP_DEMO_PASSWORD` 后跑 `python scripts/reset_demo_passwords.py --all` |
+
+### 脚本清单
+
+| 脚本 | 用途 |
+|---|---|
+| `scripts/verify_data.py` | 数据源体检：命中哪个目录、学生数、两套 ID 交集、图产物来源，退出码 0/1 |
+| `scripts/smoke_api.py` | 全接口冒烟，需服务已启动；`--base` 指定地址，退出码 1 表示有异常 |
+| `scripts/reset_demo_passwords.py` | 把演示账号密码重置为当前 `WP_DEMO_PASSWORD`，`--all` 含学生账号 |

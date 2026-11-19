@@ -72,3 +72,14 @@ lib/
 
 # ========== 私有实施指南（本地保留） ==========
 docs/阶段一_算法工程师实施指南.md
+
+# ========== 阶段四真实产物（2026-11-19 起入库）==========
+# 之前走网盘分发，导致 clone 后探测链落空、静默回退到 200 人合成集（换台机器就重演）。
+# 现改为直接入库：interim_demo 全部（6.8 MB）+ risk_scores.parquet（14 MB）+ graph_api.json（5.2 MB）。
+# 其余预测表（deepsurv / dkt_sequences / han / tft / kp_mastery）后端暂未使用，仍不入库。
+algorithm/data/interim/interim_demo/*
+!algorithm/data/interim/interim_demo/*.parquet
+
+algorithm/data/processed/processed_full_demo/*
+!algorithm/data/processed/processed_full_demo/risk_scores.parquet
+!algorithm/data/processed/processed_full_demo/graph_api.json
