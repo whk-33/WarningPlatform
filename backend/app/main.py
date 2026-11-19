@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api import admin, auth, risk, student
 from app.config import settings
 from app.core.response import ApiError, fail, ok
-from app.data import users
+from app.data import interventions, users
 from app.data.repo import get_repo
 from app.data.risk_repo import get_risk_repo
 
@@ -62,6 +62,7 @@ async def _handle_unexpected(request: Request, exc: Exception):
 def _startup() -> None:
     repo = get_repo()
     users.init_db()
+    interventions.init()
 
     # 风险演示账号绑定的学生（数据没就绪不该拖挂启动，降级为不创建）
     try:

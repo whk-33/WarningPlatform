@@ -41,7 +41,7 @@ service.interceptors.response.use(
     // 非标准响应（如 Swagger / 静态文件）原样返回
     if (!body || typeof body !== 'object' || !('code' in body)) return body
     if (body.code !== 200) {
-      ElMessage.error(body.msg || '请求失败')
+      if (!res.config?.silent) ElMessage.error(body.msg || '请求失败')
       return Promise.reject(new Error(body.msg || `业务错误 ${body.code}`))
     }
     return body.data
@@ -49,23 +49,25 @@ service.interceptors.response.use(
   async err => {
     const status = err.response?.status
     const msg = messageOf(err)
+    // silent：调用方自己处理空态/降级，不弹全局提示（用于演示数据缺失等预期场景）
+    const silent = err.config?.silent || err.response?.config?.silent
 
     if (status === 401) {
-      ElMessage.error(msg === '请求失败' ? '登录已过期，请重新登录' : msg)
+      if (!silent) ElMessage.error(msg === '请求失败' ? '登录已过期，请重新登录' : msg)
       await toLogin()
       return Promise.reject(err)
     }
     if (status === 403) {
-      ElMessage.error(msg || '没有权限访问该资源')
+      if (!silent) ElMessage.error(msg || '没有权限访问该资源')
       return Promise.reject(err)
     }
     if (status === 422) {
       // 参数校验失败：后端 data 里是 [{ field, msg }]
       const detail = err.response?.data?.data?.[0]
-      ElMessage.error(detail ? `参数校验失败：${detail.field} ${detail.msg}` : msg)
+      if (!silent) ElMessage.error(detail ? `参数校验失败：${detail.field} ${detail.msg}` : msg)
       return Promise.reject(err)
     }
-    ElMessage.error(status === 500 ? '服务异常，请稍后重试' : msg)
+    if (!silent) ElMessage.error(status === 500 ? '服务异常，请稍后重试' : msg)
     return Promise.reject(err)
   }
 )
