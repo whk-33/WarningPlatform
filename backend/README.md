@@ -259,29 +259,33 @@ export function getRiskStat(params) {
 
 ---
 
-## 全量真实数据接入（2026-11-17）
+## 全量真实数据接入（2026-11-17，2026-11-19 改为入库）
 
-### 数据放哪
+### 数据放哪：已在仓库里，clone 即可用
 
-代码按 `config.py` 的候选顺序探测，**第一候选就是 `algorithm/data/oulad/<名字>`**：
+真实全量数据包**已提交进 git**，不需要网盘分发、不需要环境变量、不需要目录联接：
 
 ```
-algorithm/data/oulad/interim_demo/            主数据 28,785 学生（12 张表）
-algorithm/data/oulad/processed_full_demo/     risk_scores.parquet + graph_api.json
-algorithm/data/oulad/processed_demo/          （旧目录，可不存在）
+algorithm/data/interim/interim_demo/          主数据 28,785 学生 / 12 张表        6.8 MB   已入库
+algorithm/data/processed/processed_full_demo/
+    ├── risk_scores.parquet                   521,488 行 / 4 学期               14 MB    已入库
+    └── graph_api.json                        精简图，优先于 graph_nx（100 MB）   5.2 MB   已入库
 ```
 
-`algorithm/data/oulad/` 在 `.gitignore` 里，新机器 clone 后必然为空、程序会静默回落到
-200 人合成集（姓名形如「学生0096」）。所以要么把目录放进去，要么设环境变量
-`WP_INTERIM` / `WP_PROCESSED` / `WP_GRAPH` 指过去。
+`config.py` 的探测顺序是「**真实数据优先、200 人合成集垫底**」：
 
-> 本机当前是把文件放在 `algorithm/data/interim/interim_demo` 与
-> `algorithm/data/processed/processed_full_demo`，再在两个默认位置上建 **目录联接（junction）**
-> 指过去，这样默认探测就能命中，**不用配任何环境变量**。缺点是换机器要重建联接；
-> 想更省事就直接把目录放到 `algorithm/data/oulad/` 下。
+| 数据 | 探测顺序 |
+|---|---|
+| 主数据 | `interim/interim_demo` → `oulad/interim_demo` → `oulad/interim` → **`algorithm/data/interim`（合成集，末位兜底）** |
+| 风险分 | `processed/processed_full_demo` → `oulad/processed_full_demo` → `oulad/processed_demo` |
+| 图 | `processed/processed_full_demo/graph_api.json` → … → `processed/graph_nx.json` |
+
+> **为什么以前要建 junction**：数据曾经走网盘分发、被 `.gitignore` 排除。别人 clone 后探测链
+> 首项落空，会**静默回退到 `algorithm/data/interim` 里的 200 人合成集**（姓名形如「学生0096」），
+> 2026-11-17 排查了很久才发现根因。现已改为入库、并把合成集降到末位，换机器不会再重演。
 >
-> 注意：`config.py` 目前**没有**调用 `load_dotenv()`，所以把变量写进 `backend/.env` 不会生效，
-> 必须用系统环境变量或启动脚本 export。
+> 仍可用 `WP_INTERIM` / `WP_PROCESSED` / `WP_GRAPH` 覆盖默认路径。注意 `config.py` 目前
+> **没有**调用 `load_dotenv()`，所以写进 `backend/.env` 不生效，必须用系统环境变量或启动脚本 export。
 
 ### 起服务前的三步体检
 
