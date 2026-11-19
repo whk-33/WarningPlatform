@@ -1,7 +1,8 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import * as echarts from 'echarts'
-import { getSemesters, getWarnList, getWarnReport } from '../../api'
+import { ElMessage } from 'element-plus'
+import { addWarnIntervene, getSemesters, getWarnList, getWarnReport } from '../../api'
 import { fmtPercent, fmtScore, riskType } from '../../utils/format'
 
 const loading = ref(false)
@@ -22,6 +23,9 @@ const reportLoading = ref(false)
 const report = ref({})
 const trendRef = ref(null)
 let trendChart = null
+
+const interveneForm = reactive({ action: '', note: '' })
+const submitting = ref(false)
 
 const trendSourceText = computed(() =>
   report.value.trend_source === 'platform_log' ? '来源：平台真实行为日志' : '来源：按当前指标估算的示意曲线'
@@ -118,6 +122,8 @@ async function openReport(row) {
   reportDialog.value = true
   reportLoading.value = true
   report.value = {}
+  interveneForm.action = ''
+  interveneForm.note = ''
   try {
     report.value = await getWarnReport({ warn_id: row.warn_id })
     await nextTick()
@@ -126,6 +132,33 @@ async function openReport(row) {
     reportDialog.value = false
   } finally {
     reportLoading.value = false
+  }
+}
+
+async function submitIntervene() {
+  if (!interveneForm.action) {
+    ElMessage.warning('请先选择处理方式')
+    return
+  }
+  submitting.value = true
+  try {
+    await addWarnIntervene({
+      warn_id: report.value.warn_id,
+      action: interveneForm.action,
+      note: interveneForm.note
+    })
+    ElMessage.success('干预记录已保存')
+    interveneForm.action = ''
+    interveneForm.note = ''
+    // 重新拉报告（含最新干预记录），同时刷新列表里的处理状态
+    report.value = await getWarnReport({ warn_id: report.value.warn_id })
+    await nextTick()
+    renderTrend()
+    await load()
+  } catch {
+    // 错误提示由 request 拦截器统一弹出
+  } finally {
+    submitting.value = false
   }
 }
 
@@ -184,6 +217,13 @@ onBeforeUnmount(() => {
         <el-table-column label="等级" width="90" align="center">
           <template #default="{ row }">
             <el-tag :type="riskType(row.risk_level)" effect="light">{{ row.risk_level_text }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="处理状态" width="100" align="center">
+          <template #default="{ row }">
+            <el-tag :type="row.intervened ? 'success' : 'info'" effect="plain">
+              {{ row.intervened ? '已干预' : '待处理' }}
+            </el-tag>
           </template>
         </el-table-column>
         <el-table-column label="成绩" width="80" align="center">
@@ -263,6 +303,45 @@ onBeforeUnmount(() => {
           <ul class="suggest">
             <li v-for="(item, i) in report.suggestions || []" :key="i">{{ item }}</li>
           </ul>
+
+          <h4 class="sub-title">干预记录</h4>
+          <el-table :data="report.interventions || []" size="small" border empty-text="暂无干预记录">
+            <el-table-column prop="created_at" label="登记时间" width="170" />
+            <el-table-column prop="action" label="处理方式" width="120" />
+            <el-table-column prop="operator" label="登记人" width="110" />
+            <el-table-column prop="note" label="处理备注" min-width="200" show-overflow-tooltip />
+          </el-table>
+
+          <div class="intervene-form">
+            <div class="intervene-row">
+              <el-select
+                v-model="interveneForm.action"
+                placeholder="处理方式"
+                style="width: 150px"
+              >
+                <el-option
+                  v-for="action in report.intervention_actions || []"
+                  :key="action"
+                  :label="action"
+                  :value="action"
+                />
+              </el-select>
+              <span class="muted">登记后该预警在列表中标记为「已干预」</span>
+            </div>
+            <el-input
+              v-model="interveneForm.note"
+              type="textarea"
+              :rows="2"
+              maxlength="500"
+              show-word-limit
+              placeholder="填写处理情况，例如：已约谈学生，约定每周补交一次作业"
+            />
+            <div class="intervene-actions">
+              <el-button type="primary" :loading="submitting" @click="submitIntervene">
+                保存干预记录
+              </el-button>
+            </div>
+          </div>
         </template>
         <el-empty v-else description="报告生成中" />
       </div>
@@ -294,5 +373,29 @@ onBeforeUnmount(() => {
   padding-left: 18px;
   line-height: 1.9;
   color: #3c4757;
+}
+
+.intervene-form {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.intervene-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.intervene-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.muted {
+  color: #8a94a6;
+  font-size: 12px;
+  margin: 6px 0;
 }
 </style>

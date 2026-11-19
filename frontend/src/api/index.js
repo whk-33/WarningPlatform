@@ -40,6 +40,16 @@ export function getWarnReport(params) {
   return request.get('/admin/warn/report', { params })
 }
 
+/** 干预记录列表（同时返回可用的处理方式 actions） */
+export function getWarnInterventions(params) {
+  return request.get('/admin/warn/interventions', { params })
+}
+
+/** 登记一条干预记录 */
+export function addWarnIntervene(data) {
+  return request.post('/admin/warn/intervene', data)
+}
+
 /* ---------------- 学生端 ---------------- */
 
 export function getStudentHomeInfo(params) {
