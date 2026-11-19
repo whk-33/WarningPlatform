@@ -6,9 +6,11 @@ from fastapi import APIRouter, Depends, Query
 
 from app.config import settings
 from app.core.deps import require_admin
-from app.core.response import ok
+from app.core.response import ApiError, ok
+from app.data import interventions
 from app.data.repo import get_repo
 from app.data.risk_repo import get_risk_repo
+from app.schemas import WarnInterveneIn
 from app.services import build_report
 
 router = APIRouter(prefix="/api/admin", tags=["admin"], dependencies=[Depends(require_admin)])
@@ -130,6 +132,14 @@ def warn_list(
         "semester": repo.resolve_semester(semester),
         "comparable_with_home_stat": False,
     })
+
+    # 批量标注处理状态，避免前端逐条查干预记录
+    latest = interventions.latest_map()
+    for item in data["list"]:
+        hit = latest.get(item["warn_id"])
+        item["intervened"] = hit is not None
+        item["last_intervention_action"] = hit["action"] if hit else ""
+        item["last_intervention_time"] = hit["created_at"] if hit else ""
     return ok(data)
 
 
@@ -137,4 +147,30 @@ def warn_list(
 def warn_report(warn_id: str = Query(..., description="预警编号")):
     repo = get_repo()
     warn = repo.warning_by_id(warn_id)
-    return ok(build_report(repo, warn))
+    data = build_report(repo, warn)
+    data["interventions"] = interventions.list_by_warn(warn_id)
+    data["intervention_actions"] = list(interventions.ACTIONS)
+    return ok(data)
+
+
+@router.get("/warn/interventions", summary="预警干预记录")
+def warn_interventions(warn_id: str = Query(..., description="预警编号")):
+    return ok({
+        "list": interventions.list_by_warn(warn_id),
+        "actions": list(interventions.ACTIONS),
+    })
+
+
+@router.post("/warn/intervene", summary="登记预警干预记录")
+def warn_intervene(payload: WarnInterveneIn, user: dict = Depends(require_admin)):
+    if payload.action not in interventions.ACTIONS:
+        raise ApiError(400, f"处理方式不支持：{payload.action}")
+    # 预警编号不存在直接 404，避免脏数据入库
+    get_repo().warning_by_id(payload.warn_id)
+    item = interventions.add(
+        payload.warn_id,
+        payload.action,
+        (payload.note or "").strip(),
+        str(user.get("sub") or ""),
+    )
+    return ok(item, msg="干预记录已保存")
