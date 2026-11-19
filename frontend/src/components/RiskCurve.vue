@@ -42,7 +42,14 @@ async function load() {
   active.value = null
   chart?.clear()
   try {
-    const data = await getRiskCurve(props.stuId, { semester: props.semester || undefined })
+    let data
+    try {
+      data = await getRiskCurve(props.stuId, { semester: props.semester || undefined }, { silent: true })
+    } catch (e) {
+      // 学生库学期（如 2025S）与风险数据源学期（如 2014B）不一致时，去掉学期重试一次
+      if (!props.semester || e?.response?.status !== 400) throw e
+      data = await getRiskCurve(props.stuId, {}, { silent: true })
+    }
     weeks.value = (data?.weeks || []).slice().sort((a, b) => a.week - b.week)
     active.value = weeks.value.length ? weeks.value[weeks.value.length - 1] : null
     await nextTick()

@@ -36,9 +36,9 @@ async function load() {
   const params = { semester: semester.value || undefined }
   try {
     const [infoData, suggestData, warnData] = await Promise.all([
-      getStudentHomeInfo(params),
-      getStudentSuggest(params),
-      getStudentWarnList(params)
+      getStudentHomeInfo(params, { silent: true }),
+      getStudentSuggest(params, { silent: true }),
+      getStudentWarnList(params, { silent: true })
     ])
     info.value = infoData || {}
     suggestions.value = suggestData?.items || []

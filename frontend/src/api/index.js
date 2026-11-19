@@ -52,27 +52,27 @@ export function addWarnIntervene(data) {
 
 /* ---------------- 学生端 ---------------- */
 
-export function getStudentHomeInfo(params) {
-  return request.get('/student/home/info', { params })
+export function getStudentHomeInfo(params, config = {}) {
+  return request.get('/student/home/info', { params, ...config })
 }
 
-export function getStudentSuggest(params) {
-  return request.get('/student/home/suggest', { params })
+export function getStudentSuggest(params, config = {}) {
+  return request.get('/student/home/suggest', { params, ...config })
 }
 
 export function getStudentGraph(params) {
   return request.get('/student/gnn/graph', { params })
 }
 
-export function getStudentWarnList(params) {
-  return request.get('/student/warn/list', { params })
+export function getStudentWarnList(params, config = {}) {
+  return request.get('/student/warn/list', { params, ...config })
 }
 
 /* ---------------- 阶段四 · 风险（与上面 15 个并行，不替换） ---------------- */
 
 /** 16 周曲线：一次拿全，别循环调 */
-export function getRiskCurve(stuId, params) {
-  return request.get(`/risk/student/${stuId}`, { params })
+export function getRiskCurve(stuId, params, config = {}) {
+  return request.get(`/risk/student/${stuId}`, { params, ...config })
 }
 
 /** 单周风险（含该周 top_factors） */
