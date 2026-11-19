@@ -32,14 +32,19 @@ class Settings:
     db_path = _env_path("WP_DB_PATH", BACKEND_DIR / "data" / "app.db")
 
     # 按优先级探测：演示增强层 -> OULAD 适配产物 -> mock 产物
-    interim_candidates = [
+    # 顺序很重要：真实全量数据（interim_demo）必须排在 200 人合成演示集之前，
+    # 否则 clone 下来的仓库会静默回退到合成集（2026-11-17 踩过这个坑，排查了半天）。
+    interim_candidates = list(dict.fromkeys([
         _env_path(
             "WP_INTERIM",
-            PROJECT_ROOT / "algorithm" / "data" / "oulad" / "interim_demo",
+            PROJECT_ROOT / "algorithm" / "data" / "interim" / "interim_demo",
         ),
+        # 历史/兼容路径：本地建过目录联接时命中这两项
+        PROJECT_ROOT / "algorithm" / "data" / "oulad" / "interim_demo",
         PROJECT_ROOT / "algorithm" / "data" / "oulad" / "interim",
+        # 仅 200 人的合成演示集，真实数据缺失时才兜底
         PROJECT_ROOT / "algorithm" / "data" / "interim",
-    ]
+    ]))
 
     # 阶段四风险分表：risk_scores.parquet 所在目录，按契约探测顺序
     # WP_PROCESSED -> processed_full_demo -> processed_demo
@@ -47,10 +52,12 @@ class Settings:
     processed_candidates = list(dict.fromkeys([
         _env_path(
             "WP_PROCESSED",
-            PROJECT_ROOT / "algorithm" / "data" / "oulad" / "processed_full_demo",
+            PROJECT_ROOT / "algorithm" / "data" / "processed" / "processed_full_demo",
         ),
+        # 历史/兼容路径
         PROJECT_ROOT / "algorithm" / "data" / "oulad" / "processed_full_demo",
         PROJECT_ROOT / "algorithm" / "data" / "oulad" / "processed_demo",
+        PROJECT_ROOT / "algorithm" / "data" / "processed_full_demo",
     ]))
 
     # risk_scores.parquet 不存在时，用算法侧导出的 mock 数据包兜底（docs/mock_api/*.json）
@@ -61,8 +68,9 @@ class Settings:
     graph_candidates = [
         _env_path(
             "WP_GRAPH",
-            PROJECT_ROOT / "algorithm" / "data" / "oulad" / "processed_full_demo" / "graph_api.json",
+            PROJECT_ROOT / "algorithm" / "data" / "processed" / "processed_full_demo" / "graph_api.json",
         ),
+        PROJECT_ROOT / "algorithm" / "data" / "oulad" / "processed_full_demo" / "graph_api.json",
         PROJECT_ROOT / "algorithm" / "data" / "oulad" / "processed_demo" / "graph_api.json",
         PROJECT_ROOT / "algorithm" / "data" / "oulad" / "processed" / "graph_api.json",
         PROJECT_ROOT / "algorithm" / "data" / "processed" / "graph_api.json",
