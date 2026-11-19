@@ -1,0 +1,41 @@
+# 一键部署：docker compose up -d --build
+# 前端 http://localhost:8080（nginx 反代 /api 到 backend:8000）
+services:
+  backend:
+    build: ./backend
+    environment:
+      TZ: Asia/Shanghai
+      WP_DEBUG: ${WP_DEBUG:-0}
+      WP_SECRET_KEY: ${WP_SECRET_KEY:-dev-only-secret-please-change-me-32bytes}
+      WP_DEMO_PASSWORD: ${WP_DEMO_PASSWORD:-wp123456}
+    volumes:
+      # 数据沿用仓库里的算法产物；容器内 PROJECT_ROOT=/，默认探测路径正好命中
+      - ./algorithm:/algorithm:ro
+      - ./docs:/docs:ro
+      # 账号库 + 干预记录库持久化
+      - backend-data:/app/data
+    expose:
+      - "8000"
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3)
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  backend-data:

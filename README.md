@@ -26,6 +26,27 @@ WarningPlatform/
 
 后端启动见 [`backend/README.md`](backend/README.md)，接口字段见 [`docs/接口约定.md`](docs/接口约定.md)。
 
+## 一键部署（Docker Compose）
+
+前置：本机装好 Docker Desktop。仓库里的大文件由 Git LFS 管理，首次克隆后先执行 `git lfs pull`，
+否则 `algorithm/data` 下是 LFS 指针文件，后端读不到 Parquet。
+
+```bash
+# 可选：在项目根目录建 .env 覆盖默认配置
+# WP_SECRET_KEY=换成你自己的密钥
+# WP_DEMO_PASSWORD=换成你自己的演示密码
+
+docker compose up -d --build
+```
+
+- 访问 <http://localhost:8080>；nginx 把 `/api` 反代到 `backend:8000`，前后端同源，不用处理跨域
+- 后端只读挂载 `./algorithm`、`./docs`，`backend-data` 数据卷保存账号库与干预记录（重建容器不丢）
+- 健康检查走 `/api/health`，`docker compose ps` 显示 `healthy` 即启动完成
+- 改代码后重新执行 `docker compose up -d --build`；停止用 `docker compose down`（加 `-v` 会连数据卷一起删）
+
+演示账号：`admin / wp123456`、`riskdemo / wp123456`（详见 [`docs/接口约定.md`](docs/接口约定.md) §八）。
+不走 Docker 的本地开发按 `backend/README.md`、`frontend/README.md` 启动。
+
 ## 协作规范
 
 - **禁止直接往 main 推送代码**，所有改动必须通过 PR 合并
