@@ -506,15 +506,23 @@ class RiskRepo:
         }
 
     def _occurred_mask(self, sub: pd.DataFrame) -> tuple[pd.Series, str]:
-        """标出「事件已发生」的学生，返回 (按 stu_id 的布尔序列, 判定来源)。
+        """标出「`prob` 打满 1.0」的学生，返回 (按 stu_id 的布尔序列, 判定来源)。
 
-        算法侧口径：`prob = 1.0` 的行 100% 是已发生事件（`risk_event_time <= week`），
-        这批人不算模型预测，应从预警率分母里拆出去，单独展示为"已发生"。
+        算法侧口径：`prob = 1.0` 的行是已发生事件（`risk_event_time <= week`），
+        这批人不算模型预测，应从预警率分母里拆出去单独展示。
 
-        优先用权威字段 `risk_state`（=1 即已发生）；当前导出的 parquet 只有 9 列、
-        没有该字段，故回退到 `risk_prob >= 1.0` 代理。代理的可靠性有旁证：
-        剔除后风险池 `risk_prob` 最大值恰为 0.9981、池内无一人等于 1.0，
-        与算法侧给出的数字完全一致。
+        ⚠️ 这个语义**目前无法验证**，不要当成事实使用：
+          - 导出的 parquet 只有 9 列，没有 `risk_state`，也没有 `risk_event_time`
+          - 用 `pred_event_week` 反推**不支持**该说法：2014J w8 共 2804 行 `prob=1.0`，
+            其中 `pred_event_week <= 8` 的仅 1 行（0.04%），`-1`（无事件）1978 行（70.5%）
+          - 合理解释是两列出自不同模型（prob 来自 TFT，pred_event_week 来自 DeepSurv），
+            本来就不能互相印证
+          - 曾经把「剔除后池内 max=0.9981、无一人等于 1.0」当作旁证，那是**无效证据**：
+            它只是剔除操作的定义，不构成"已发生"的语义证明
+
+        因此对外只能表述为「剔除 `prob` 打满 1.0 的样本后的预警率」，
+        等算法侧补导 `risk_state` / `risk_event_time` 后再谈"已发生"。
+        优先用权威字段 `risk_state`（=1 即已发生），缺失时才回退到 `prob >= 1.0` 代理。
         """
 
         if "risk_state" in sub.columns:
@@ -523,7 +531,7 @@ class RiskRepo:
         else:
             mask = sub["risk_prob"] >= 1.0
             source = "prob_proxy"
-        # 一个学生有多门课，任一门已发生即算已发生
+        # 一个学生有多门课，任一门打满即算已发生
         return mask.groupby(sub["stu_id"]).any(), source
 
     def _pool_breakdown(
