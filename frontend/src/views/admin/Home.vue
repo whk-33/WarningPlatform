@@ -179,8 +179,13 @@ onBeforeUnmount(() => {
             </div>
             <div class="risk-foot">
               <el-tag type="warning" effect="plain" size="small">
-                预警率 {{ fmtPercent(riskStat.alert_rate) }}
+                全表预警率 {{ fmtPercent(riskStat.alert_rate) }}
               </el-tag>
+              <el-tooltip content="剔除已发生事件后的学生-周样本口径，对外汇报用" placement="top">
+                <el-tag type="info" effect="plain" size="small">
+                  风险池预警率 {{ fmtPercent(riskStat.pool_alert_rate ?? riskStat.alert_rate) }}
+                </el-tag>
+              </el-tooltip>
               <span class="muted">等级口径：低 / 中 / 高</span>
             </div>
             <p v-if="riskStat.sample_based" class="muted risk-note">

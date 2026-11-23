@@ -22,6 +22,11 @@ const props = defineProps({
 
 const LEVEL_COLORS = ['#67c23a', '#e6a23c', '#f56c6c']
 
+// 已发生事件的学生不渲染成"风险 100%"：优先用 risk_state，缺失时用概率打满判断
+function isOccurred(p) {
+  return Number(p?.risk_state) === 1 || Number(p?.risk_prob) >= 1
+}
+
 const loading = ref(false)
 const error = ref('')
 const weeks = ref([])
@@ -74,7 +79,7 @@ function render() {
           if (!p) return ''
           const lines = [
             `第 ${p.week + 1} 周`,
-            `风险概率：${fmtPercent(p.risk_prob)}`,
+            `风险概率：${isOccurred(p) ? '已发生' : fmtPercent(p.risk_prob)}`,
             `等级：${p.risk_level_name || '—'}`,
             `预测事件：${predEventText(p.pred_event_week)}`
           ]
