@@ -16,6 +16,7 @@ REQUIRED_COLS = [
     "stu_id", "course_code", "semester", "week",
     "risk_prob", "risk_level", "risk_level_name", "pred_event_week", "top_factors",
 ]
+ENRICH_COLS = ["risk_state", "risk_score"]
 WEEKLY_KEYS = set(REQUIRED_COLS) - {"top_factors"} | {"top_factors"}
 
 
@@ -25,11 +26,30 @@ def parquet():
 
 
 def test_parquet_contract(parquet):
-    """risk_scores.parquet 保持 9 字段契约。"""
-    assert list(parquet.columns) == REQUIRED_COLS
+    """原 9 字段保持不变，末尾追加 risk_state / risk_score（向后兼容）。"""
+    assert list(parquet.columns) == REQUIRED_COLS + ENRICH_COLS
     assert parquet["week"].between(0, 15).all()
     assert set(parquet["risk_level"].unique()) <= {0, 1, 2}
     assert parquet["risk_prob"].between(0, 1).all()
+    assert set(parquet["risk_state"].unique()) <= {0, 1}
+    # 已发生行没有模型分，未发生行必须有
+    assert (parquet["risk_score"].isna() == (parquet["risk_state"] == 1)).all()
+
+
+def test_risk_score_unsaturized(parquet):
+    """risk_score 是未饱和 logit：与 risk_prob 排序完全一致，且已发生行无并列。"""
+    d = parquet[(parquet["semester"] == "2014J") & (parquet["week"] == 8)
+                & (parquet["risk_state"] == 0)]
+    assert d["risk_score"].notna().all()
+    ordered = d.sort_values("risk_score")
+    assert (ordered["risk_prob"].diff().dropna() >= -1e-6).all()   # 与 prob 严格单调
+    assert d["risk_score"].nunique() / len(d) > 0.95
+
+
+def test_week15_no_garbage_threshold(parquet):
+    """期末周无未来标签，不得在“永不事件”池上校准出低阈值（风险池预警 < 2%）。"""
+    d = parquet[(parquet["week"] == 15) & (parquet["risk_state"] == 0)]
+    assert (d["risk_level"] > 0).mean() < 0.02
 
 
 @pytest.mark.parametrize("name", ["weekly", "student", "factors", "admin_list", "admin_stat"])

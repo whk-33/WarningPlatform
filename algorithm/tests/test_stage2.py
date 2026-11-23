@@ -129,6 +129,8 @@ def test_han_forward_with_edge_scale(torch):
 # ═════════════════════════════════════════════════════════════════════════════
 CONTRACT = ["stu_id", "course_code", "semester", "week", "risk_prob",
             "risk_level", "risk_level_name", "pred_event_week", "top_factors"]
+# 阶段四追加列（向后兼容）：risk_state 区分模型预测/已发生，risk_score 为未饱和 logit
+CONTRACT += ["risk_state", "risk_score"]
 
 
 @pytest.fixture(scope="module")
