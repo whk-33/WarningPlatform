@@ -276,7 +276,7 @@ watch(tab, value => {
             <el-table-column label="风险概率" width="120" align="center">
               <template #default="{ row }">
                 <el-tag v-if="isOccurred(row)" type="info" effect="plain" size="small">已发生</el-tag>
-                <span v-else>{{ fmtPercent(row.risk_prob) }}</span>
+                <span v-else>{{ fmtScore(row.risk_prob * 100, 1) }}%</span>
               </template>
             </el-table-column>
             <el-table-column label="等级" width="90" align="center">
