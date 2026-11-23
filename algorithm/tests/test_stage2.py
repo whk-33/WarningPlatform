@@ -18,7 +18,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "algorithm" / "src"))
 
-PROCESSED = ROOT / "algorithm" / "data" / "oulad" / "processed_full_demo"
+PROCESSED = ROOT / "algorithm" / "data" / "processed" / "processed_full_demo"
 REPORTS = ROOT / "algorithm" / "reports"
 
 from training.common import average_precision, brier, evaluate, recall_at_fraction, roc_auc  # noqa: E402

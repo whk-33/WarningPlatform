@@ -1,6 +1,9 @@
 """阶段三算法侧测试：30_online_risk 桥 + 32_quality_checks 门禁。
 
-运行：py -3 -m pytest algorithm/tests/test_stage3.py -v
+运行（在仓库根目录）：python -m pytest algorithm/tests/test_stage3.py -v
+
+> 子进程用 `sys.executable`，保证和跑测试的是同一个解释器（历史坑：写死 `py -3`
+> 会指向系统 3.11，缺 pyarrow/numpy，报的错看起来像产物问题）。
 """
 from __future__ import annotations
 
@@ -16,6 +19,9 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 SRC = ROOT / "algorithm" / "src"
 SERVING = SRC / "serving"
+# 全量产物目录。历史坑：旧脚本默认写 algorithm/data/oulad/processed_full_demo，
+# 而那是空目录，真实产能在 data/processed/processed_full_demo。
+PROCESSED = ROOT / "algorithm" / "data" / "processed" / "processed_full_demo"
 
 
 # ================================================= 32_quality_checks
@@ -91,7 +97,7 @@ class TestQualityChecks:
 def _online(cmd: list[str]) -> dict:
     """subprocess 调桥脚本，stdout 返回 JSON。"""
     res = subprocess.run(
-        ["py", "-3", str(SERVING / "30_online_risk.py"), *cmd],
+        [sys.executable, str(SERVING / "30_online_risk.py"), *cmd],
         capture_output=True, text=True, timeout=120, cwd=str(ROOT),
     )
     out = (res.stdout or "").strip()
@@ -108,8 +114,7 @@ SEM = "2014J"
 class TestOnlineRiskBridge:
     def test_weekly_offline_consistent(self):
         """online weekly 与 offline parquet 一致（关键字段 risk_level / risk_prob / pred_event_week）。"""
-        offline = pd.read_parquet(ROOT / "algorithm" / "data" / "oulad" /
-                                   "processed_full_demo" / "risk_scores.parquet")
+        offline = pd.read_parquet(PROCESSED / "risk_scores.parquet")
         hit = offline[(offline["stu_id"] == STU_AT_RISK)
                       & (offline["course_code"] == COURSE_AT_RISK)
                       & (offline["semester"] == SEM)
@@ -132,8 +137,7 @@ class TestOnlineRiskBridge:
     def test_weekly_safe_student(self):
         """无风险学生 → level=0, pred_event_week=-1"""
         # 从 offline 表里找 level=0 的样本
-        offline = pd.read_parquet(ROOT / "algorithm" / "data" / "oulad" /
-                                   "processed_full_demo" / "risk_scores.parquet")
+        offline = pd.read_parquet(PROCESSED / "risk_scores.parquet")
         safe = offline[offline["week"] == 8]
         safe = safe[safe["risk_level"] == 0]
         if safe.empty:

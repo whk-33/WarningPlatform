@@ -10,7 +10,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 MOCK_DIR = ROOT / "docs" / "mock_api"
-PROCESSED = ROOT / "algorithm" / "data" / "oulad" / "processed_full_demo"
+PROCESSED = ROOT / "algorithm" / "data" / "processed" / "processed_full_demo"
 
 REQUIRED_COLS = [
     "stu_id", "course_code", "semester", "week",

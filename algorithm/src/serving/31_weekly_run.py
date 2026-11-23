@@ -34,7 +34,9 @@ REPORTS_DIR = PROJECT_ROOT / "algorithm" / "reports"
 
 
 def find_processed() -> Path:
+    # 真实产物在 data/processed/processed_full_demo；data/oulad/* 是早期布局，保留作兼容。
     for cand in [
+        PROJECT_ROOT / "algorithm" / "data" / "processed" / "processed_full_demo",
         PROJECT_ROOT / "algorithm" / "data" / "oulad" / "processed_full_demo",
         PROJECT_ROOT / "algorithm" / "data" / "oulad" / "processed_demo",
         PROJECT_ROOT / "algorithm" / "data" / "oulad" / "processed",
