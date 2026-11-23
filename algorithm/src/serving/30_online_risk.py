@@ -261,7 +261,7 @@ def _predict_event_week_static(stu_id: str, course_code: str, semester: str) -> 
     with torch.no_grad():
         h = ds_model(torch.as_tensor(xs_z, dtype=torch.float32)).numpy().item()
     # DeepSurv 单样本简化：h_i 越大越早出事，固定用分位 0.8 当阈值
-    # 无真实 baseline 的情况下无法给出有意义周次，标记 unknown（不是"无风险"）
+    # 无真实 baseline，映射不回周次，保守返回 -1 且来源标 unknown
     return -1, "unknown"
 
 

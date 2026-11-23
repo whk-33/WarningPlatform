@@ -284,3 +284,67 @@ def test_malformed_bridge_payload_degrades_to_404(client, admin_headers, monkeyp
     resp = client.get(f"/api/risk/student/{NEW_STU}", headers=admin_headers,
                       params={"semester": SAMPLE_SEM})
     assert resp.status_code == 404
+
+
+# ------------------------------------------- 契约 D-2：pred_event_week_source
+
+def test_pred_week_source_passthrough(client, admin_headers, monkeypatch):
+    """桥自己给了合法三态就照用，后端不得改写。"""
+
+    monkeypatch.setenv("WP_BRIDGE", "1")
+
+    def _weeks(stu, sem):
+        out = []
+        for i in range(16):
+            w = _fake_week(i)
+            w["pred_event_week"] = 12 if i < 8 else -1
+            w["pred_event_week_source"] = "inference" if i < 8 else "unknown"
+            out.append(w)
+        return out
+
+    monkeypatch.setattr(bridge, "student_weeks", _weeks)
+    resp = client.get(f"/api/risk/student/{NEW_STU}", headers=admin_headers,
+                      params={"semester": SAMPLE_SEM})
+    assert resp.status_code == 200, resp.text
+    weeks = resp.json()["data"]["weeks"]
+    assert weeks[0]["pred_event_week_source"] == "inference"
+    assert weeks[0]["pred_event_week"] == 12
+    assert weeks[15]["pred_event_week_source"] == "unknown"
+    assert weeks[15]["pred_event_week"] == -1
+
+
+def test_pred_week_source_backfilled_for_old_bridge(client, admin_headers, monkeypatch):
+    """老版本桥没有这个字段：按「-1 → unknown，非 -1 → inference」补齐，前端不必判空。"""
+
+    monkeypatch.setenv("WP_BRIDGE", "1")
+
+    def _weeks(stu, sem):
+        out = []
+        for i in range(16):
+            w = _fake_week(i)          # _fake_week 本来就没有 pred_event_week_source
+            w["pred_event_week"] = 9 if i == 0 else -1
+            out.append(w)
+        return out
+
+    monkeypatch.setattr(bridge, "student_weeks", _weeks)
+    resp = client.get(f"/api/risk/student/{NEW_STU}", headers=admin_headers,
+                      params={"semester": SAMPLE_SEM})
+    assert resp.status_code == 200, resp.text
+    weeks = resp.json()["data"]["weeks"]
+    assert weeks[0]["pred_event_week_source"] == "inference"
+    assert all(w["pred_event_week_source"] == "unknown" for w in weeks[1:])
+
+
+def test_pred_week_source_rejects_garbage(client, admin_headers, monkeypatch):
+    """桥回了个值域外的字符串：按周次反推，不要原样透给前端。"""
+
+    monkeypatch.setenv("WP_BRIDGE", "1")
+    w = _fake_week(8)
+    w["pred_event_week_source"] = "probably"
+    monkeypatch.setattr(bridge, "weekly", lambda *a, **kw: w)
+
+    resp = client.get("/api/risk/weekly", headers=admin_headers, params={
+        "stu_id": NEW_STU, "course_code": NEW_COURSE, "semester": SAMPLE_SEM, "week": 8,
+    })
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["data"]["pred_event_week_source"] == "unknown"

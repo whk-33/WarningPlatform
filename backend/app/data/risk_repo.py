@@ -48,6 +48,11 @@ REQUIRED_COLUMNS = (
 
 LEVEL_NAMES = {0: "低", 1: "中", 2: "高"}
 
+# 契约 v1.9（组长 D-2）：`pred_event_week` 的来源三态。
+# `parquet`=命中离线表；`inference`=现场推理出值；`unknown`=判不出（此时周次必为 -1）。
+# 前端只认这三个值，`unknown` 不得展示成「本学期无风险」。
+PRED_WEEK_SOURCES = ("parquet", "inference", "unknown")
+
 # 桥回退的响应标记：`data_source` 从 parquet/mock 变成 bridge，`inferred` 让前端能区分
 # 「离线落库的分数」和「这次现算的分数」——现算结果不进缓存表，也不参与风险榜。
 BRIDGE_MARK = {"data_source": "bridge", "inferred": True}
@@ -57,6 +62,18 @@ BRIDGE_MARK = {"data_source": "bridge", "inferred": True}
 # 当前导出的 parquet 只有上面 9 列，这两列都还没有，所以不能放进 REQUIRED_COLUMNS，
 # 否则读取会直接报字段缺失。
 OPTIONAL_COLUMNS = ("risk_state", "risk_score", "risk_event_time")
+
+
+def _pred_week_source(raw: Any, week: int) -> str:
+    """归一化 `pred_event_week_source`：桥给了合法值就照用，否则按周次反推。
+
+    反推的规则是契约 D-2 的硬约束——`-1` 只能是 `unknown`，非 `-1` 才是 `inference`。
+    这样老版本桥（还没输出该字段）也能给出合规值，前端不必判空。
+    """
+
+    if isinstance(raw, str) and raw.strip() in PRED_WEEK_SOURCES:
+        return raw.strip()
+    return "unknown" if week < 0 else "inference"
 
 
 def _parse_factors(raw: Any) -> list[dict]:
@@ -329,6 +346,14 @@ class RiskRepo:
         # risk_score 是未饱和 logit，只有未发生行有值；已发生行为 null，前端据此不渲染成 100%
         raw_score = row["risk_score"] if "risk_score" in row.index else None
         score = None if raw_score is None or pd.isna(raw_score) else round(float(raw_score), 4)
+        pred_week = int(row["pred_event_week"])
+        # 契约 v1.9（组长 D-2）：pred_event_week_source 三态。
+        # 离线表出来的值一律是 parquet——命中表就算命中，哪怕值是 -1（无预计周）。
+        src = "parquet"
+        if "pred_event_week_source" in row.index and isinstance(row["pred_event_week_source"], str):
+            cand = row["pred_event_week_source"].strip()
+            if cand in PRED_WEEK_SOURCES:
+                src = cand
         return {
             "stu_id": str(row["stu_id"]),
             "course_code": str(row["course_code"]),
@@ -337,7 +362,8 @@ class RiskRepo:
             "risk_prob": round(float(row["risk_prob"]), 4),
             "risk_level": level,
             "risk_level_name": name,
-            "pred_event_week": int(row["pred_event_week"]),
+            "pred_event_week": pred_week,
+            "pred_event_week_source": src,
             "risk_state": state,
             "risk_score": score,
             "top_factors": _parse_factors(row["top_factors"]),
@@ -366,6 +392,7 @@ class RiskRepo:
             # 这里绝不能抛，否则一个坏响应就把 404 变成 500。
             return None
         pred_raw = raw.get("pred_event_week")
+        pred_week = int(pred_raw) if pred_raw is not None else -1
         return {
             "stu_id": str(raw.get("stu_id") or stu_id),
             "course_code": str(raw.get("course_code") or ""),
@@ -375,7 +402,8 @@ class RiskRepo:
             "risk_level": level,
             "risk_level_name": str(raw.get("risk_level_name") or LEVEL_NAMES.get(level, "")),
             # -1 是桥的语义值（拿不到基线），原样透出，别改成 0
-            "pred_event_week": int(pred_raw) if pred_raw is not None else -1,
+            "pred_event_week": pred_week,
+            "pred_event_week_source": _pred_week_source(raw.get("pred_event_week_source"), pred_week),
             "risk_state": 1 if raw.get("event_occurred") else 0,
             "risk_score": None,
             "top_factors": raw.get("top_factors") or [],

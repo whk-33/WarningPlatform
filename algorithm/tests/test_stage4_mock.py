@@ -20,7 +20,11 @@ REQUIRED_COLS = [
     "risk_prob", "risk_level", "risk_level_name", "pred_event_week", "top_factors",
 ]
 ENRICH_COLS = ["risk_state", "risk_score"]
-WEEKLY_KEYS = set(REQUIRED_COLS + ENRICH_COLS) | {"pred_event_week_source"}
+# 契约 v1.9（组长 D-2）：这一列不是 parquet 的列，是接口层按「数据从哪来」派生的，
+# 但 mock 要跟接口对齐，所以必须出现。
+API_ONLY_COLS = ["pred_event_week_source"]
+WEEKLY_KEYS = set(REQUIRED_COLS + ENRICH_COLS + API_ONLY_COLS)
+PRED_WEEK_SOURCES = {"parquet", "inference", "unknown"}
 
 
 @pytest.fixture(scope="module")
@@ -107,3 +111,21 @@ def test_admin_stat_consistent():
     assert stat["level_0"] + stat["level_1"] + stat["level_2"] == stat["total"]
     expected = (stat["level_1"] + stat["level_2"]) / stat["total"]
     assert abs(stat["alert_rate"] - expected) < 1e-3
+
+
+def test_pred_week_source_three_places():
+    """契约 v1.9（组长 D-2）：三处风险响应都要带 pred_event_week_source，值域合规。"""
+
+    wk = json.loads((MOCK_DIR / "weekly.json").read_text(encoding="utf-8"))
+    assert wk["pred_event_week_source"] in PRED_WEEK_SOURCES
+
+    stu = json.loads((MOCK_DIR / "student.json").read_text(encoding="utf-8"))
+    assert {w["pred_event_week_source"] for w in stu["weeks"]} <= PRED_WEEK_SOURCES
+
+    lst = json.loads((MOCK_DIR / "admin_list.json").read_text(encoding="utf-8"))
+    for it in lst["items"]:
+        src = it["pred_event_week_source"]
+        assert src in PRED_WEEK_SOURCES
+        # 硬约束：unknown 必然对应 -1，非 -1 不能标 unknown
+        if src == "unknown":
+            assert it["pred_event_week"] == -1
