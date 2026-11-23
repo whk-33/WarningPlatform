@@ -21,12 +21,16 @@ export const RISK_NAME_TEXT = { 0: '低', 1: '中', 2: '高' }
 
 /**
  * 预测事件周：-1 是"本学期内无风险"，不是第 0 周；week 与 pred_event_week 都是 0 起。
- * 契约补充：pred_event_week=-1 且 risk_prob>=0.5 视为"无法判定"，显示"暂无预计周"。
+ * 契约 D-2（B-2 上线后）：pred_event_week_source 三态是权威判据——
+ *   parquet  → 离线表命中，值可信；-1 即离线表判定"本学期内无风险"
+ *   unknown  → 判不出（pred_event_week 必为 -1），显示"暂无预计周"
+ *   inference→ 现场推理出值；若仍为 -1 归"暂无预计周"，不断言无风险
+ * 不再用 risk_prob>=0.5 猜（F-1：B-2 透出 source 后删除概率推断）。
  */
-export function predEventText(week, prob) {
+export function predEventText(week, source) {
   const n = Number(week)
   if (n === -1 || Number.isNaN(n)) {
-    return Number(prob) >= 0.5 ? '暂无预计周' : '本学期内无风险'
+    return source === 'parquet' ? '本学期内无风险' : '暂无预计周'
   }
   return `预计第 ${n + 1} 周`
 }

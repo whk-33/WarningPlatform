@@ -10,9 +10,9 @@ import {
 } from '../../api'
 import { fmtPercent, fmtScore, predEventText, riskType } from '../../utils/format'
 
-// 已发生事件的行不展示成"风险 100%"：优先用 risk_state，缺失时用概率打满判断
+// 已发生事件的行不展示成"风险 100%"：risk_state=1 即已发生（契约必出字段，不再用 prob>=1 推断）
 function isOccurred(row) {
-  return Number(row?.risk_state) === 1 || Number(row?.risk_prob) >= 1
+  return Number(row?.risk_state) === 1
 }
 
 const tab = ref('final')
@@ -285,7 +285,7 @@ watch(tab, value => {
               </template>
             </el-table-column>
             <el-table-column label="预测事件" min-width="160">
-              <template #default="{ row }">{{ predEventText(row.pred_event_week, row.risk_prob) }}</template>
+              <template #default="{ row }">{{ predEventText(row.pred_event_week, row.pred_event_week_source) }}</template>
             </el-table-column>
           </el-table>
 
