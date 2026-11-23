@@ -19,7 +19,7 @@ const riskCards = computed(() => [
 ])
 
 const cards = computed(() => [
-  { label: '学生总数', value: stat.value.total_student, color: '#2f6bff', sub: '' },
+  { label: '本周预测学生', value: stat.value.total_student, color: '#2f6bff', sub: stat.value.week !== undefined ? `第 ${stat.value.week + 1} 周模型口径` : '' },
   { label: '预警学生', value: stat.value.warn_count, color: '#e6a23c', sub: `占比 ${fmtPercent(stat.value.warn_rate)}` },
   { label: '高危学生', value: stat.value.high_count, color: '#f56c6c', sub: '需优先介入' },
   { label: '正常学生', value: stat.value.normal_count, color: '#67c23a', sub: '保持现有节奏' }
