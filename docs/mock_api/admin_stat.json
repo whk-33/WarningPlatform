@@ -5,5 +5,8 @@
   "level_0": 4857,
   "level_1": 746,
   "level_2": 2201,
-  "alert_rate": 0.3776
+  "alert_rate": 0.3776,
+  "pool_alert_rate": 0.1836,
+  "occurred_rate": 0.2377,
+  "occurred_source": "risk_state"
 }
