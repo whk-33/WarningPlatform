@@ -12,7 +12,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import * as echarts from 'echarts'
 import { getRiskCurve } from '../api'
-import { fmtPercent, predEventText, riskType } from '../utils/format'
+import { fmtPercent, fmtScore, predEventText, riskType } from '../utils/format'
 
 const props = defineProps({
   stuId: { type: String, default: '' },
@@ -79,7 +79,7 @@ function render() {
           if (!p) return ''
           const lines = [
             `第 ${p.week + 1} 周`,
-            `风险概率：${isOccurred(p) ? '已发生' : fmtPercent(p.risk_prob)}`,
+            `风险概率：${isOccurred(p) ? '已发生' : fmtScore(p.risk_prob * 100, 1) + '%'}`,
             `等级：${p.risk_level_name || '—'}`,
             `预测事件：${predEventText(p.pred_event_week, p.pred_event_week_source)}`
           ]
