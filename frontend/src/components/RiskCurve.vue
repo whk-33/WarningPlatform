@@ -4,7 +4,7 @@
  *
  * 契约要点（docs/前端接入说明.md §4）：
  * - week 是 0 起，横轴标签写 week + 1
- * - pred_event_week === -1 显示"本学期内无风险"
+ * - pred_event_week === -1：概率 <0.5 显示"本学期内无风险"，概率 >=0.5 显示"暂无预计周"
  * - risk_prob 是 0-1 小数，展示转百分数
  * - 等级文案用 risk_level_name（低/中/高），不与旧页面 risk_level_text 混用
  * - contrib 总和可能 < 1，条形长度按最大值缩放，数值照实显示
@@ -81,7 +81,7 @@ function render() {
             `第 ${p.week + 1} 周`,
             `风险概率：${isOccurred(p) ? '已发生' : fmtPercent(p.risk_prob)}`,
             `等级：${p.risk_level_name || '—'}`,
-            `预测事件：${predEventText(p.pred_event_week)}`
+            `预测事件：${predEventText(p.pred_event_week, p.risk_prob)}`
           ]
           if (p.top_factors?.length) {
             lines.push('主要因子：')

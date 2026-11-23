@@ -285,7 +285,7 @@ watch(tab, value => {
               </template>
             </el-table-column>
             <el-table-column label="预测事件" min-width="160">
-              <template #default="{ row }">{{ predEventText(row.pred_event_week) }}</template>
+              <template #default="{ row }">{{ predEventText(row.pred_event_week, row.risk_prob) }}</template>
             </el-table-column>
           </el-table>
 

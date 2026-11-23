@@ -19,10 +19,16 @@ export function fmtScore(value, digits = 1) {
  */
 export const RISK_NAME_TEXT = { 0: '低', 1: '中', 2: '高' }
 
-/** 预测事件周：-1 是"本学期内无风险"，不是第 0 周；week 与 pred_event_week 都是 0 起 */
-export function predEventText(week) {
+/**
+ * 预测事件周：-1 是"本学期内无风险"，不是第 0 周；week 与 pred_event_week 都是 0 起。
+ * 契约补充：pred_event_week=-1 且 risk_prob>=0.5 视为"无法判定"，显示"暂无预计周"。
+ */
+export function predEventText(week, prob) {
   const n = Number(week)
-  return n === -1 || Number.isNaN(n) ? '本学期内无风险' : `预计第 ${n + 1} 周`
+  if (n === -1 || Number.isNaN(n)) {
+    return Number(prob) >= 0.5 ? '暂无预计周' : '本学期内无风险'
+  }
+  return `预计第 ${n + 1} 周`
 }
 
 /** 0.812 -> 81% */
