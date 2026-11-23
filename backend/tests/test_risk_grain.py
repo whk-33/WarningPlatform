@@ -88,11 +88,54 @@ def test_list_keeps_the_highest_level_course():
     assert a["risk_level"] == 2
 
 
-def test_list_sorted_by_level_before_prob():
-    """prob 与 level 非单调，排序必须 level 优先，否则筛高危会混进低 level。"""
+# 已发生 / 风险池混排（契约 §3.4）：风险池按 risk_score 降序，已发生整组置后
+ROWS_WITH_STATE = [
+    {"stu_id": "P1", "course_code": "CCC", "semester": "2014J", "week": 8,
+     "risk_prob": 0.20, "risk_level": 1, "pred_event_week": 9,
+     "risk_level_name": "警惕", "top_factors": "[]", "risk_state": 0, "risk_score": -1.2},
+    {"stu_id": "P2", "course_code": "CCC", "semester": "2014J", "week": 8,
+     "risk_prob": 0.80, "risk_level": 2, "pred_event_week": 8,
+     "risk_level_name": "高危", "top_factors": "[]", "risk_state": 0, "risk_score": 1.4},
+    {"stu_id": "P3", "course_code": "CCC", "semester": "2014J", "week": 8,
+     "risk_prob": 0.55, "risk_level": 1, "pred_event_week": 10,
+     "risk_level_name": "警惕", "top_factors": "[]", "risk_state": 0, "risk_score": 0.3},
+    # 已发生：prob 恒 1.0，risk_score 为 null（没有未饱和排序分）
+    {"stu_id": "O1", "course_code": "CCC", "semester": "2014J", "week": 8,
+     "risk_prob": 1.0, "risk_level": 2, "pred_event_week": 8,
+     "risk_level_name": "高危", "top_factors": "[]", "risk_state": 1, "risk_score": None},
+]
 
-    levels = [it["risk_level"] for it in _repo(ROWS).admin_list("2014J", 8, None, 1, 100)["items"]]
-    assert levels == sorted(levels, reverse=True)
+
+def test_list_payload_exposes_state_and_score():
+    """契约 §3.1/§3.4：列表与详情都要透出 risk_state / risk_score，前端才能渲染「已发生」。"""
+
+    items = _repo(ROWS_WITH_STATE).admin_list("2014J", 8, None, 1, 100)["items"]
+    assert {"risk_state", "risk_score"} <= set(items[0])
+    assert all(i["risk_state"] in (0, 1) for i in items)
+    # 已发生行必须是 null 而不是 0，否则前端会画出一个假的破底线
+    assert all(i["risk_score"] is None for i in items if i["risk_state"] == 1)
+
+
+def test_list_sorted_by_risk_score_occurred_last():
+    """风险池按 risk_score 降序，已发生整组排在后面（不是按 level 排）。"""
+
+    items = _repo(ROWS_WITH_STATE).admin_list("2014J", 8, None, 1, 100)["items"]
+    states = [i["risk_state"] for i in items]
+    assert states == sorted(states), "已发生（risk_state=1）必须整组置后"
+
+    live = [i["risk_score"] for i in items if i["risk_state"] == 0]
+    assert live == sorted(live, reverse=True), "风险池必须按 risk_score 降序"
+    assert [i["stu_id"] for i in items] == ["P2", "P3", "P1", "O1"]
+
+
+def test_list_first_page_not_dominated_by_occurred():
+    """回归：已发生学生 prob 恒 1.0，若不做分组，首页 20 条会全是已发生（实测 2014J w8 如此）。"""
+
+    rows = [dict(r, stu_id=f"O{i}", risk_prob=1.0, risk_state=1, risk_score=None)
+            for i, r in enumerate([ROWS_WITH_STATE[3]] * 20)]
+    rows += ROWS_WITH_STATE[:3]                      # 3 个风险池学生，分数都不高
+    first = _repo(rows).admin_list("2014J", 8, None, 1, 5)["items"]
+    assert [i["risk_state"] for i in first] == [0, 0, 0, 1, 1]
 
 
 def test_list_level_filter_matches_stat():

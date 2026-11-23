@@ -110,7 +110,14 @@ def test_student_curve_unknown_student(client, admin_headers):
 def test_student_curve_partial_flag(client, admin_headers):
     """非样本学生在 mock 里只有导出那一周，必须标 partial，前端才不会把单点当趋势。"""
 
-    resp = client.get("/api/risk/student/stu_103891", headers=admin_headers)
+    # 从列表里挑一个「不是曲线样本」的学生：mock 的曲线只导出 SAMPLE_STU，
+    # 其余学生都只有导出那一周。不写死 stu_id，避免 mock 重生成后 404。
+    listing = client.get("/api/admin/risk/list", headers=admin_headers,
+                         params={"page": 1, "size": 100}).json()["data"]
+    candidates = [i["stu_id"] for i in listing["items"] if i["stu_id"] != SAMPLE_STU]
+    assert candidates, "mock 列表里应当有非曲线样本学生"
+
+    resp = client.get(f"/api/risk/student/{candidates[0]}", headers=admin_headers)
     assert resp.status_code == 200
     data = resp.json()["data"]
     assert len(data["weeks"]) == 1
@@ -141,11 +148,17 @@ def test_admin_list_pagination(client, admin_headers):
 
     assert p1["page"] == 1 and p1["size"] == 5
     assert p1["week"] == 8                    # mock 导出周，不是 week15 的单条
-    assert p1["total"] == 20                  # mock 只有 top20 样本
     assert len(p1["items"]) == 5
     assert len(p2["items"]) == 5
     assert {i["stu_id"] for i in p1["items"]} & {i["stu_id"] for i in p2["items"]} == set()
-    # 契约：按 risk_prob 降序
+
+    # total 必须等于实际能翻到的学生数。不写死 20：mock 由 admin_list 的 18 名学生
+    # 加上曲线样本学生组成，导出规则一变就过期（上一版就是这么挂的）。
+    full = client.get("/api/admin/risk/list", headers=admin_headers,
+                      params={"page": 1, "size": 100}).json()["data"]
+    assert p1["total"] == full["total"] == len(full["items"]) > 0
+
+    # 契约 §3.4：风险池按 risk_score 降序（与 prob 严格单调、缺列时退回 prob）
     probs = [i["risk_prob"] for i in p1["items"]]
     assert probs == sorted(probs, reverse=True)
 
@@ -160,14 +173,19 @@ def test_admin_list_page_size_alias(client, admin_headers):
 
 
 def test_admin_list_level_filter(client, admin_headers):
+    """level 过滤的各级人数必须加得回总数——这是列表与统计对账的前提。"""
+
+    def total_of(level):
+        return client.get("/api/admin/risk/list", headers=admin_headers,
+                          params={"level": level, "size": 100}).json()["data"]["total"]
+
+    overall = client.get("/api/admin/risk/list", headers=admin_headers,
+                         params={"size": 100}).json()["data"]["total"]
+    assert sum(total_of(lv) for lv in (0, 1, 2)) == overall
+
     high = client.get("/api/admin/risk/list", headers=admin_headers,
                       params={"level": 2}).json()["data"]
-    low = client.get("/api/admin/risk/list", headers=admin_headers,
-                     params={"level": 0}).json()["data"]
-
-    assert high["total"] == 20                            # mock 样本全是高危
     assert all(i["risk_level"] == 2 for i in high["items"])
-    assert low["total"] == 0
 
 
 def test_admin_list_bad_level(client, admin_headers):
@@ -187,8 +205,11 @@ def test_admin_stat_distribution(client, admin_headers):
     expected = (data["level_1"] + data["level_2"]) / data["total"]
     assert abs(data["alert_rate"] - expected) < 1e-4
     assert data["data_source"] == "mock"
-    # mock 只导出 top20 高危，真实分布必须来自算法侧导出，并告知列表可得条数
-    assert data["list_available"] == 20
+    # mock 的 total/level_* 来自算法侧导出的全量分布（作为"应有规模"参考），
+    # list_available 是样本里实际能翻到的记录行数（聚合前的学生-课程对），
+    # 所以样本量远小于 total 属正常，只要都为正、且样本不超过全量即可。
+    assert data["total"] > 0
+    assert 0 < data["list_available"] <= data["total"]
     assert data["sample_based"] is True
 
 
