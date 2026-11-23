@@ -9,6 +9,8 @@
 2. risk_state：0=模型预测，1=已发生；
 3. risk_score：未发生行 = logit(risk_prob)，已发生行 = NaN（未饱和排序分）；
 4. 期末周（week=T-1）原阈值取自"永不事件"池、无判别意义 → 改用 T-2 周阈值重算 level；
+   **只重算这一周**：其余周保留 20_score_offline 的原始判定，否则 json 里四位小数的
+   阈值会让 34 行的等级被悄悄翻转（见 main() 里的注释）；
 5. 原子替换写回 parquet，并打印逐周预警率（全表 / 风险池）。
 
 用法：
@@ -83,8 +85,22 @@ def main() -> int:
     level = np.where(prob >= p_high, 2, np.where(prob >= p_mid, 1, 0)).astype("int8")
     level[occurred] = 2                              # 已发生 → 高（展示"已发生"）
 
+    # 级别只允许在**期末周**重算：那一周原来的阈值取自"永不事件"池、没有判别意义，
+    # 必须换成 T-2 周阈值。其余周必须保留 20_score_offline 的原始判定——
+    # serving_metrics.json 里的阈值是 round(…, 4) 后的近似值，用它重算会让卡在
+    # 两个值之间的行翻转等级（实测 2014J/2014B 共 34 行，0.0065%），
+    # 从而让「补列脚本」悄悄改掉模型结论。
+    if "risk_level" in df.columns:
+        keep = week != (T - 1)
+        level = np.where(keep, df["risk_level"].to_numpy().astype("int8"), level)
+
     df["risk_state"] = occurred.astype("int8")
-    df["risk_score"] = np.where(occurred, np.nan, logit(prob)).astype(np.float32)
+    if "risk_score" not in df.columns or df["risk_score"].isna().all():
+        df["risk_score"] = np.where(occurred, np.nan, logit(prob)).astype(np.float32)
+    else:
+        # 已有 risk_score 就别重算：logit() 走 float64→float32，和 20 号直出的
+        # 未饱和 logit 差在 1e-6 级，重算会让 22 万行"无意义地不同"。
+        df["risk_score"] = df["risk_score"].astype(np.float32)
     df["risk_level"] = level
     df["risk_level_name"] = pd.Series(level, index=df.index).map(LEVEL_CN).astype("string")
     df = df[[
@@ -101,7 +117,7 @@ def main() -> int:
     print(f"[risk_state] 预测={int((df.risk_state == 0).sum()):,}  已发生={int((df.risk_state == 1).sum()):,}")
     print(f"[risk_score] 非空={int(df.risk_score.notna().sum()):,}  空值=已发生行")
     print(f"[期末周] 沿用 w{T - 2} 阈值 高={th[T - 1][0]:.4f} 中={th[T - 1][1]:.4f}")
-    for t in (8, T - 2, T - 1):
+    for t in sorted({w for w in (8, T - 2, T - 1) if w in before}):
         pool = valid & (week == t)
         rows_t = week == t
         print(

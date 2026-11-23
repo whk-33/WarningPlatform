@@ -44,7 +44,8 @@ def _row_to_dict(row: pd.Series) -> dict:
     d["pred_event_week"] = int(d["pred_event_week"])
     d["risk_state"] = int(d["risk_state"])
     d["risk_score"] = None if pd.isna(d["risk_score"]) else round(float(d["risk_score"]), 4)
-    # 离线表恒由 deepsurv_pred.parquet 生成，来源固定 parquet（契约 §2）
+    # 契约 v1.9（组长 D-2）：mock 全部取自离线表，来源恒为 parquet。
+    # 该字段不是 parquet 的列，是接口层派生的，所以不进 CONTRACT_COLS。
     d["pred_event_week_source"] = "parquet"
     return d
 

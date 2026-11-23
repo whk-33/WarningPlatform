@@ -104,6 +104,11 @@ def test_student_curve_is_one_shot_array(client, admin_headers):
 
 
 def test_student_curve_unknown_student(client, admin_headers):
+    """桥关闭时（conftest 默认 WP_BRIDGE=0）新学生仍是 404——接桥没有改变无桥环境的契约。
+
+    桥可用时的 200 路径见 `tests/test_bridge.py`。
+    """
+
     assert client.get("/api/risk/student/stu_999999", headers=admin_headers).status_code == 404
 
 

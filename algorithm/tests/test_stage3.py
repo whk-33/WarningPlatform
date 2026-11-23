@@ -4,6 +4,7 @@
 """
 from __future__ import annotations
 
+import importlib.util
 import json
 import subprocess
 import sys
@@ -130,6 +131,7 @@ class TestOnlineRiskBridge:
         assert d["stu_id"] == STU_AT_RISK
         assert d["risk_level"] == of_level
         assert d["pred_event_week"] == of_pred
+        # 契约 v1.9（组长 D-2）：命中离线表就必须标 parquet
         assert d["pred_event_week_source"] == "parquet"
         assert abs(float(d["risk_prob"]) - of_prob) < 1e-3
         assert d["event_occurred"] is True
@@ -150,6 +152,7 @@ class TestOnlineRiskBridge:
         assert d["risk_level"] == 0
         assert int(d["pred_event_week"]) >= -1
         assert d["event_occurred"] is False
+        assert d["pred_event_week_source"] == "parquet"
 
     def test_weekly_new_student_source_unknown(self):
         """新学生：pred_event_week=-1 且 source=unknown（语义是"未知"而非"无风险"）。"""
@@ -167,7 +170,7 @@ class TestOnlineRiskBridge:
         assert "risk_prob" in w0
         assert "risk_level" in w0
         assert "top_factors" in w0
-        assert w0["pred_event_week_source"] in {"parquet", "inference", "unknown"}
+        assert all(w["pred_event_week_source"] == "parquet" for w in d["weeks"])
 
     def test_subgraph_fallback(self):
         """subgraph 模式：对不存在的 stu_id 返回空图（不报错）。"""
@@ -188,3 +191,16 @@ class TestWeeklyRun:
         sys.path.pop(0)
         rc = wr.run(dry_run=True)
         assert rc == 0
+
+
+def test_new_student_pred_week_source_unknown():
+    """契约 v1.9（组长 D-2）：新学生现场推理映射不回周次 → -1 + unknown，不得标无风险。
+
+    依赖 torch（桥要加载 TFT/DeepSurv），所以在没装 torch 的机器上跳过而不是红。
+    """
+    if importlib.util.find_spec("torch") is None:
+        pytest.skip("本机没有 torch：桥跑不起来，这条只能在装了 torch 的机器上验")
+    d = _online(["weekly", "--stu_id", "stu_9999999", "--course_code", "DDD",
+                 "--semester", SEM, "--week", "8"])
+    assert d["pred_event_week"] == -1
+    assert d["pred_event_week_source"] == "unknown"

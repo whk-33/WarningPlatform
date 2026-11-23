@@ -19,6 +19,9 @@ PROJECT_ROOT = BACKEND_DIR.parent
 sys.path.insert(0, str(BACKEND_DIR))
 
 os.environ.setdefault("WP_DB_PATH", str(Path(tempfile.gettempdir()) / "wp_test_accounts.db"))
+# 推理桥默认关闭：单测不该 spawn 子进程，也不该因为本机装没装 torch 而变红。
+# 需要验证桥行为的用例用 monkeypatch.setenv("WP_BRIDGE", "1") 单独打开。
+os.environ.setdefault("WP_BRIDGE", "0")
 
 from app.config import settings  # noqa: E402  必须在 sys.path 就绪后导入
 
@@ -36,6 +39,17 @@ def client():
 
     with TestClient(app) as c:
         yield c
+
+
+@pytest.fixture(autouse=True)
+def _reset_bridge_cache():
+    """桥的 TTL 缓存是进程级的，用例之间必须清掉，否则开关切换会串味。"""
+
+    from app.data import bridge
+
+    bridge.clear_cache()
+    yield
+    bridge.clear_cache()
 
 
 @pytest.fixture(scope="session")
