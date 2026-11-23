@@ -9,6 +9,7 @@
   "pred_event_week": -1,
   "risk_state": 1,
   "risk_score": null,
+  "pred_event_week_source": "parquet",
   "top_factors": [
     {
       "factor": "出勤率",
