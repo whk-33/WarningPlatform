@@ -10,6 +10,11 @@ import {
 } from '../../api'
 import { fmtPercent, fmtScore, predEventText, riskType } from '../../utils/format'
 
+// 已发生事件的行不展示成"风险 100%"：优先用 risk_state，缺失时用概率打满判断
+function isOccurred(row) {
+  return Number(row?.risk_state) === 1 || Number(row?.risk_prob) >= 1
+}
+
 const tab = ref('final')
 
 const loading = ref(false)
@@ -268,8 +273,11 @@ watch(tab, value => {
             <el-table-column label="周次" width="90" align="center">
               <template #default="{ row }">第{{ row.week + 1 }}周</template>
             </el-table-column>
-            <el-table-column label="风险概率" width="110" align="center">
-              <template #default="{ row }">{{ fmtPercent(row.risk_prob) }}</template>
+            <el-table-column label="风险概率" width="120" align="center">
+              <template #default="{ row }">
+                <el-tag v-if="isOccurred(row)" type="info" effect="plain" size="small">已发生</el-tag>
+                <span v-else>{{ fmtPercent(row.risk_prob) }}</span>
+              </template>
             </el-table-column>
             <el-table-column label="等级" width="90" align="center">
               <template #default="{ row }">
