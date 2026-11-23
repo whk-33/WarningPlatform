@@ -231,8 +231,12 @@ def _factors_one(z_obs_t, w_t, obs_raw_t, obs_cols, sign, k=3):
 
 # ============================================================== 预测事件周
 
-def _predict_event_week_static(stu_id: str, course_code: str, semester: str) -> int:
-    """DeepSurv pred_event_week。有 parquet 查 parquet；无 parquet 就推理。"""
+def _predict_event_week_static(stu_id: str, course_code: str, semester: str) -> tuple[int, str]:
+    """DeepSurv pred_event_week，返回 (week, source)。
+
+    source 取值：`parquet` 命中离线表；`inference` 现场推理得值；`unknown` 无法判定。
+    注意 `unknown` 时 week 恒为 -1，但其语义是"未知"，不是"本学期无风险"。
+    """
     processed = _find_processed()
     surv_path = processed / "deepsurv_pred.parquet"
     if surv_path.exists():
@@ -241,7 +245,7 @@ def _predict_event_week_static(stu_id: str, course_code: str, semester: str) -> 
                    & (surv["semester"] == semester)]
         if not hit.empty:
             v = int(hit.iloc[0]["pred_event_week"])
-            return v
+            return v, "parquet"
 
     # 新样本：读 static cols，加载 DeepSurv 推理
     from models.tft import STATIC_COLS  # noqa: E402
@@ -257,8 +261,8 @@ def _predict_event_week_static(stu_id: str, course_code: str, semester: str) -> 
     with torch.no_grad():
         h = ds_model(torch.as_tensor(xs_z, dtype=torch.float32)).numpy().item()
     # DeepSurv 单样本简化：h_i 越大越早出事，固定用分位 0.8 当阈值
-    # 无真实 baseline 的情况下，保守返回 -1（学期内无风险）
-    return -1
+    # 无真实 baseline 的情况下无法给出有意义周次，标记 unknown（不是"无风险"）
+    return -1, "unknown"
 
 
 # ============================================================== 对外接口
@@ -320,7 +324,7 @@ def predict_one(stu_id: str, course_code: str, semester: str, week: int) -> dict
         p = 1.0
         level = 2
 
-    pred_ev = _predict_event_week_static(stu_id, course_code, semester)
+    pred_ev, pred_ev_src = _predict_event_week_static(stu_id, course_code, semester)
 
     return {
         "stu_id": stu_id,
@@ -331,6 +335,7 @@ def predict_one(stu_id: str, course_code: str, semester: str, week: int) -> dict
         "risk_level": int(level),
         "risk_level_name": LEVEL_CN[int(level)],
         "pred_event_week": int(pred_ev),
+        "pred_event_week_source": pred_ev_src,
         "top_factors": factors,
         "event_occurred": bool(event_occurred),
         "factor_source": "online",
@@ -372,6 +377,7 @@ def predict_student(stu_id: str, semester: str) -> list[dict]:
                 "risk_level": best["risk_level"],
                 "risk_level_name": best["risk_level_name"],
                 "pred_event_week": best["pred_event_week"],
+                "pred_event_week_source": best["pred_event_week_source"],
                 "top_factors": best["top_factors"],
                 "event_occurred": best["event_occurred"],
                 "course_code": best["course_code"],
