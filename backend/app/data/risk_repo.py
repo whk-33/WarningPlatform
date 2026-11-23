@@ -48,6 +48,10 @@ REQUIRED_COLUMNS = (
 
 LEVEL_NAMES = {0: "低", 1: "中", 2: "高"}
 
+# 桥回退的响应标记：`data_source` 从 parquet/mock 变成 bridge，`inferred` 让前端能区分
+# 「离线落库的分数」和「这次现算的分数」——现算结果不进缓存表，也不参与风险榜。
+BRIDGE_MARK = {"data_source": "bridge", "inferred": True}
+
 # 可选字段：有就用，没有就回退代理。`risk_state=1` 表示事件已发生（算法侧口径），
 # `risk_score` 是模型侧的连续排序分（避免单课学生只有 0/0.5/1 三档无法排序）。
 # 当前导出的 parquet 只有上面 9 列，这两列都还没有，所以不能放进 REQUIRED_COLUMNS，
@@ -339,6 +343,75 @@ class RiskRepo:
             "top_factors": _parse_factors(row["top_factors"]),
         }
 
+    # ---------------------------------------------------------------- 推理桥回退
+
+    def _bridge_row_payload(self, raw: dict, stu_id: str, sem: str) -> dict | None:
+        """把桥的返回体对齐成 `_row_payload` 的形状（契约 §3.1 的 11 字段）。
+
+        两处刻意的差异：
+
+        - 桥给的是 `event_occurred`（bool），映射成 `risk_state`（0/1），与离线表同义；
+        - 桥不产 `risk_score`（它是离线打分时才算的未饱和 logit），一律 `null`。
+          前端对 `risk_score=null` 的处理就是「不渲染成 100%」，正好符合语义。
+
+        返回 `None` 表示这个 JSON 不可用（缺 `week` / 类型不对），调用方按 404 处理。
+        """
+
+        level = int(raw.get("risk_level") or 0)
+        try:
+            week = int(raw["week"])
+            prob = round(float(raw.get("risk_prob") or 0.0), 4)
+        except (KeyError, TypeError, ValueError):
+            # 桥回了个字段不全的 JSON：当作「没拿到」，由调用方 404。
+            # 这里绝不能抛，否则一个坏响应就把 404 变成 500。
+            return None
+        pred_raw = raw.get("pred_event_week")
+        return {
+            "stu_id": str(raw.get("stu_id") or stu_id),
+            "course_code": str(raw.get("course_code") or ""),
+            "semester": str(raw.get("semester") or sem),
+            "week": week,
+            "risk_prob": prob,
+            "risk_level": level,
+            "risk_level_name": str(raw.get("risk_level_name") or LEVEL_NAMES.get(level, "")),
+            # -1 是桥的语义值（拿不到基线），原样透出，别改成 0
+            "pred_event_week": int(pred_raw) if pred_raw is not None else -1,
+            "risk_state": 1 if raw.get("event_occurred") else 0,
+            "risk_score": None,
+            "top_factors": raw.get("top_factors") or [],
+        }
+
+    def _student_curve_from_bridge(self, stu_id: str, sem: str) -> dict:
+        """parquet 里没有这个学生时按需推理；桥拿不到数据就抛 404（不改接桥前的契约）。"""
+
+        from app.data import bridge
+
+        weeks_raw = bridge.student_weeks(stu_id, sem)
+        if not weeks_raw:
+            raise ApiError(
+                404,
+                f"{sem} 没有 {stu_id} 的风险记录"
+                + ("（推理桥不可用，见 /api/health 的 bridge 字段）" if not bridge.enabled() else ""),
+            )
+
+        weeks = [w for w in (self._bridge_row_payload(r, stu_id, sem) for r in weeks_raw) if w]
+        if not weeks:
+            raise ApiError(404, f"{sem} 没有 {stu_id} 的风险记录（推理桥返回的数据不可用）")
+
+        weeks.sort(key=lambda x: x["week"])
+        return {
+            "stu_id": stu_id,
+            **self._student_meta(stu_id),
+            "semester": sem,
+            "course_count": len({w["course_code"] for w in weeks}),
+            "week_count": len(weeks),
+            "weeks": weeks,
+            # 桥能推多久就推多久：不足 2 周时前端不该画趋势
+            "partial": len(weeks) < 2,
+            "sample_based": False,
+            **BRIDGE_MARK,
+        }
+
     # ---------------------------------------------------------------- 5 个接口
 
     def weekly(self, stu_id: str, course_code: str, semester: str | None, week: int | None) -> dict:
@@ -349,6 +422,13 @@ class RiskRepo:
         sub = self._slice(sem, wk)
         hit = sub[(sub["stu_id"] == stu_id) & (sub["course_code"] == course_code)]
         if hit.empty:
+            # 契约 B6：离线表里没有就走推理桥。桥不可用时仍抛 404（行为与接桥前一致）
+            from app.data import bridge
+
+            raw = bridge.weekly(stu_id, course_code, sem, wk)
+            row = self._bridge_row_payload(raw, stu_id, sem) if raw else None
+            if row:
+                return {**row, **BRIDGE_MARK}
             raise ApiError(404, f"{stu_id} 在 {sem} 第 {wk} 周没有《{course_code}》的风险记录")
         return {**self._row_payload(hit.iloc[0]), "data_source": self.source}
 
@@ -363,7 +443,8 @@ class RiskRepo:
 
         sub = self._df[(self._df["semester"] == sem) & (self._df["stu_id"] == stu_id)]
         if sub.empty:
-            raise ApiError(404, f"{sem} 没有 {stu_id} 的风险记录")
+            # 契约 B6：新学生（不在 risk_scores 里）按需推理；桥不可用仍是 404
+            return self._student_curve_from_bridge(stu_id, sem)
 
         # 多门课按周取风险最高的那门。同一周内 level 与 prob 单调等价
         # （level = prob 按该周阈值切分，已验证 64 个 (学期,周) 组合复现率 100%），

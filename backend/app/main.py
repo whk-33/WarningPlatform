@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api import admin, auth, risk, student
 from app.config import settings
 from app.core.response import ApiError, fail, ok
-from app.data import interventions, users
+from app.data import bridge, interventions, users
 from app.data.repo import get_repo
 from app.data.risk_repo import get_risk_repo
 
@@ -109,6 +109,8 @@ def health():
         "accounts": int(users.count()),
         "behaviour_metrics_is_proxy": "platform_log" not in repo.raw,
         "risk": risk_repo.info(),
+        # 推理桥（契约 B6）状态：enabled=false 时新学生仍返回 404，接口行为与接桥前一致
+        "bridge": bridge.describe(),
     })
 
 
