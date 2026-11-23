@@ -13,6 +13,7 @@
       "pred_event_week": -1,
       "risk_state": 0,
       "risk_score": -0.1337,
+      "pred_event_week_source": "parquet",
       "top_factors": [
         {
           "factor": "课件点击数",
@@ -42,6 +43,7 @@
       "pred_event_week": -1,
       "risk_state": 0,
       "risk_score": -0.1433,
+      "pred_event_week_source": "parquet",
       "top_factors": [
         {
           "factor": "课件点击数",
@@ -71,6 +73,7 @@
       "pred_event_week": -1,
       "risk_state": 0,
       "risk_score": 0.1052,
+      "pred_event_week_source": "parquet",
       "top_factors": [
         {
           "factor": "课件点击数",
@@ -100,6 +103,7 @@
       "pred_event_week": -1,
       "risk_state": 0,
       "risk_score": 0.46,
+      "pred_event_week_source": "parquet",
       "top_factors": [
         {
           "factor": "课件点击数",
@@ -129,6 +133,7 @@
       "pred_event_week": -1,
       "risk_state": 0,
       "risk_score": 1.3628,
+      "pred_event_week_source": "parquet",
       "top_factors": [
         {
           "factor": "课件点击数",
@@ -158,6 +163,7 @@
       "pred_event_week": -1,
       "risk_state": 0,
       "risk_score": 2.13,
+      "pred_event_week_source": "parquet",
       "top_factors": [
         {
           "factor": "课件点击数",
@@ -187,6 +193,7 @@
       "pred_event_week": -1,
       "risk_state": 1,
       "risk_score": null,
+      "pred_event_week_source": "parquet",
       "top_factors": [
         {
           "factor": "课件点击数",
@@ -216,6 +223,7 @@
       "pred_event_week": -1,
       "risk_state": 1,
       "risk_score": null,
+      "pred_event_week_source": "parquet",
       "top_factors": [
         {
           "factor": "出勤率",
@@ -245,6 +253,7 @@
       "pred_event_week": -1,
       "risk_state": 1,
       "risk_score": null,
+      "pred_event_week_source": "parquet",
       "top_factors": [
         {
           "factor": "出勤率",
@@ -274,6 +283,7 @@
       "pred_event_week": -1,
       "risk_state": 1,
       "risk_score": null,
+      "pred_event_week_source": "parquet",
       "top_factors": [
         {
           "factor": "出勤率",
@@ -303,6 +313,7 @@
       "pred_event_week": -1,
       "risk_state": 1,
       "risk_score": null,
+      "pred_event_week_source": "parquet",
       "top_factors": [
         {
           "factor": "出勤率",
@@ -332,6 +343,7 @@
       "pred_event_week": -1,
       "risk_state": 1,
       "risk_score": null,
+      "pred_event_week_source": "parquet",
       "top_factors": [
         {
           "factor": "出勤率",
@@ -361,6 +373,7 @@
       "pred_event_week": -1,
       "risk_state": 1,
       "risk_score": null,
+      "pred_event_week_source": "parquet",
       "top_factors": [
         {
           "factor": "出勤率",
@@ -390,6 +403,7 @@
       "pred_event_week": -1,
       "risk_state": 1,
       "risk_score": null,
+      "pred_event_week_source": "parquet",
       "top_factors": [
         {
           "factor": "出勤率",
@@ -419,6 +433,7 @@
       "pred_event_week": -1,
       "risk_state": 1,
       "risk_score": null,
+      "pred_event_week_source": "parquet",
       "top_factors": [
         {
           "factor": "出勤率",
@@ -448,6 +463,7 @@
       "pred_event_week": -1,
       "risk_state": 1,
       "risk_score": null,
+      "pred_event_week_source": "parquet",
       "top_factors": [
         {
           "factor": "出勤率",

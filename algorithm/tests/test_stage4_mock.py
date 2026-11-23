@@ -20,7 +20,7 @@ REQUIRED_COLS = [
     "risk_prob", "risk_level", "risk_level_name", "pred_event_week", "top_factors",
 ]
 ENRICH_COLS = ["risk_state", "risk_score"]
-WEEKLY_KEYS = set(REQUIRED_COLS + ENRICH_COLS)
+WEEKLY_KEYS = set(REQUIRED_COLS + ENRICH_COLS) | {"pred_event_week_source"}
 
 
 @pytest.fixture(scope="module")

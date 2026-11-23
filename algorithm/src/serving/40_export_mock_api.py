@@ -44,6 +44,8 @@ def _row_to_dict(row: pd.Series) -> dict:
     d["pred_event_week"] = int(d["pred_event_week"])
     d["risk_state"] = int(d["risk_state"])
     d["risk_score"] = None if pd.isna(d["risk_score"]) else round(float(d["risk_score"]), 4)
+    # 离线表恒由 deepsurv_pred.parquet 生成，来源固定 parquet（契约 §2）
+    d["pred_event_week_source"] = "parquet"
     return d
 
 
