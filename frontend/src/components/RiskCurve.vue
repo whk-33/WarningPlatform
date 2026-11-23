@@ -22,9 +22,9 @@ const props = defineProps({
 
 const LEVEL_COLORS = ['#67c23a', '#e6a23c', '#f56c6c']
 
-// 已发生事件的学生不渲染成"风险 100%"：优先用 risk_state，缺失时用概率打满判断
+// 已发生事件的学生不渲染成"风险 100%"：risk_state=1 即已发生（契约必出字段，不再用 prob>=1 推断）
 function isOccurred(p) {
-  return Number(p?.risk_state) === 1 || Number(p?.risk_prob) >= 1
+  return Number(p?.risk_state) === 1
 }
 
 const loading = ref(false)
@@ -81,7 +81,7 @@ function render() {
             `第 ${p.week + 1} 周`,
             `风险概率：${isOccurred(p) ? '已发生' : fmtPercent(p.risk_prob)}`,
             `等级：${p.risk_level_name || '—'}`,
-            `预测事件：${predEventText(p.pred_event_week, p.risk_prob)}`
+            `预测事件：${predEventText(p.pred_event_week, p.pred_event_week_source)}`
           ]
           if (p.top_factors?.length) {
             lines.push('主要因子：')
