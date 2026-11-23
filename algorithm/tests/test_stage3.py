@@ -130,6 +130,7 @@ class TestOnlineRiskBridge:
         assert d["stu_id"] == STU_AT_RISK
         assert d["risk_level"] == of_level
         assert d["pred_event_week"] == of_pred
+        assert d["pred_event_week_source"] == "parquet"
         assert abs(float(d["risk_prob"]) - of_prob) < 1e-3
         assert d["event_occurred"] is True
         assert len(d["top_factors"]) >= 1
@@ -150,6 +151,13 @@ class TestOnlineRiskBridge:
         assert int(d["pred_event_week"]) >= -1
         assert d["event_occurred"] is False
 
+    def test_weekly_new_student_source_unknown(self):
+        """新学生：pred_event_week=-1 且 source=unknown（语义是"未知"而非"无风险"）。"""
+        d = _online(["weekly", "--stu_id", "stu_9999999", "--course_code", "AAA",
+                     "--semester", SEM, "--week", "8"])
+        assert d["pred_event_week"] == -1
+        assert d["pred_event_week_source"] == "unknown"
+
     def test_student_mode_returns_16_weeks(self):
         d = _online(["student", "--stu_id", STU_AT_RISK, "--semester", SEM])
         assert isinstance(d, dict)
@@ -159,6 +167,7 @@ class TestOnlineRiskBridge:
         assert "risk_prob" in w0
         assert "risk_level" in w0
         assert "top_factors" in w0
+        assert w0["pred_event_week_source"] in {"parquet", "inference", "unknown"}
 
     def test_subgraph_fallback(self):
         """subgraph 模式：对不存在的 stu_id 返回空图（不报错）。"""
