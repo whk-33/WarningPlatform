@@ -1,6 +1,6 @@
 {
   "product": "risk_scores.parquet",
-  "generated_at": "2026-11-01",
+  "generated_at": "2026-11-17",
   "model_file": "model_tft_20261101.pt",
   "n_rows": 521488,
   "n_students": 28785,
@@ -158,13 +158,10 @@
     },
     "15": {
       "n_val": 2284,
-      "n_test": 2357,
-      "threshold_high": 0.2006,
-      "threshold_mid": 0.0926,
-      "val_alert_rate": 0.1502,
-      "test_alert_rate": 0.1519,
-      "test_precision_high": 0.0,
-      "test_recall_high": null
+      "n_pos": 0,
+      "threshold_high": 0.9857,
+      "threshold_mid": 0.7607,
+      "note": "期末周或无正样本：沿用上一周阈值"
     }
   },
   "thresholds_by_week": {
@@ -229,8 +226,8 @@
       0.7607
     ],
     "15": [
-      0.2006,
-      0.0926
+      0.9857,
+      0.7607
     ]
   },
   "alert_rate_by_week": {
@@ -249,7 +246,7 @@
     "12": 0.3617,
     "13": 0.3717,
     "14": 0.3751,
-    "15": 0.5977
+    "15": 0.529
   },
   "alert_rate_valid_by_week": {
     "0": 0.1412,
@@ -267,7 +264,7 @@
     "12": 0.1507,
     "13": 0.1536,
     "14": 0.15,
-    "15": 0.1478
+    "15": 0.0021
   },
   "alert_rate_test_by_week": {
     "0": 0.1442,
@@ -285,22 +282,28 @@
     "12": 0.1472,
     "13": 0.1504,
     "14": 0.1454,
-    "15": 0.1519
+    "15": 0.003
   },
   "checks": {
     "week_range_ok": true,
     "prob_range_ok": true,
     "prob_nan": 0,
+    "risk_state_values": [
+      0,
+      1
+    ],
+    "risk_score_non_null": 405316,
     "pred_event_week_min": -1,
     "pred_event_week_max": 15,
     "rows": 521488,
     "students": 28785
   },
   "notes": [
-    "risk_prob 为 TFT 在当周给出的'之后是否还会出事'概率；",
-    "风险事件已发生的周（0 <= risk_event_time <= week）置 risk_prob=1.0、risk_level=2，语义是'已发生'；",
-    "risk_level 阈值逐周在 val 有效样本上校准（目标 15% = 高 5% + 中 10%），test 上的实际预警率见 alert_rate_test_by_week；",
-    "第 15 周没有有效样本（事件必然已发生/无风险），沿用第 14 周阈值；",
+    "risk_prob 为 TFT 在当周给出的'之后是否还会出事'概率，未做概率校准，仅用于排序；",
+    "风险事件已发生的周（0 <= risk_event_time <= week）置 risk_prob=1.0、risk_level=2、risk_state=1，语义是'已发生'；",
+    "risk_level 阈值逐周在 val 风险池（尚未出事的学生）上校准（目标 15% = 高 5% + 中 10%），test 上的实际预警率见 alert_rate_test_by_week；",
+    "期末周无正样本，沿用第 14 周阈值（不在'永不事件'池上取分位）；",
+    "risk_score 为未饱和 logit，仅 risk_state=0 有值，供后端排序与分档；",
     "pred_event_week 来自 M3 DeepSurv，-1 表示本学期无风险；"
   ]
 }

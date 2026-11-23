@@ -6,8 +6,9 @@ import pandas as pd
 import pytest
 from pathlib import Path
 
-INTERIM = Path("algorithm/data/interim")
-RAW = Path("algorithm/data/raw")
+ROOT = Path(__file__).resolve().parents[2]
+INTERIM = ROOT / "algorithm" / "data" / "interim"
+RAW = ROOT / "algorithm" / "data" / "raw"
 
 REQUIRED_TABLES = [
     "student_info", "registration", "platform_log",

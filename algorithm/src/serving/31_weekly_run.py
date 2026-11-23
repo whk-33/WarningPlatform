@@ -25,6 +25,8 @@ import pandas as pd
 import importlib
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from paths import resolve_processed  # noqa: E402
+
 _qc = importlib.import_module("32_quality_checks")
 check_dataset = _qc.check_dataset
 check_labels = _qc.check_labels
@@ -34,14 +36,7 @@ REPORTS_DIR = PROJECT_ROOT / "algorithm" / "reports"
 
 
 def find_processed() -> Path:
-    for cand in [
-        PROJECT_ROOT / "algorithm" / "data" / "oulad" / "processed_full_demo",
-        PROJECT_ROOT / "algorithm" / "data" / "oulad" / "processed_demo",
-        PROJECT_ROOT / "algorithm" / "data" / "oulad" / "processed",
-    ]:
-        if (cand / "tft_weekly.parquet").exists():
-            return cand
-    raise FileNotFoundError("找不到 processed 目录（缺 tft_weekly.parquet）")
+    return resolve_processed()
 
 
 def run(new_tft_path: Path | None = None, dry_run: bool = False) -> int:

@@ -18,8 +18,10 @@ from pathlib import Path
 import pandas as pd
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
-PROCESSED = PROJECT_ROOT / "algorithm" / "data" / "oulad" / "processed_full_demo"
 OUT_DIR = PROJECT_ROOT / "docs" / "mock_api"
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from paths import resolve_processed  # noqa: E402
 
 # 采样锚点：week=8 高风险学生，保证 mock 里 3 个等级 + top_factors 都有真实样本
 ANCHOR_STU = "stu_100621"
@@ -48,7 +50,7 @@ def _factors(row: pd.Series) -> list[dict]:
 
 
 def main() -> int:
-    df = pd.read_parquet(PROCESSED / "risk_scores.parquet")
+    df = pd.read_parquet(resolve_processed("risk_scores.parquet") / "risk_scores.parquet")
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
     one = df[(df.stu_id == ANCHOR_STU) & (df.course_code == ANCHOR_COURSE)
