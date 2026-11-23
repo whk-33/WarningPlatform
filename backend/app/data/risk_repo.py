@@ -57,11 +57,41 @@ PRED_WEEK_SOURCES = ("parquet", "inference", "unknown")
 # 「离线落库的分数」和「这次现算的分数」——现算结果不进缓存表，也不参与风险榜。
 BRIDGE_MARK = {"data_source": "bridge", "inferred": True}
 
+
+def bridge_miss_data() -> dict:
+    """桥也没结果时，把「为什么没有」写进 404 的 `data`（验收 RCPT-05 追问过 404/503）。
+
+    状态码仍是 404：前端已有的空态处理不用改，而接桥前也是 404。
+    真正需要区分的是排障场景——`reason` 一眼看出是桥挂了还是这个学生真的不存在。
+    """
+
+    from app.data import bridge
+
+    info = bridge.describe()
+    last = info.get("last_error") or {}
+    if not info["enabled"]:
+        reason = "bridge_disabled"
+    elif last:
+        reason = "algorithm_unavailable"
+    else:
+        reason = "not_found_anywhere"
+    return {
+        "reason": reason,
+        "bridge": {
+            "enabled": info["enabled"],
+            "reason": info.get("reason") or "",
+            "last_error": last or None,
+        },
+    }
+
 # 可选字段：有就用，没有就回退代理。`risk_state=1` 表示事件已发生（算法侧口径），
 # `risk_score` 是模型侧的连续排序分（避免单课学生只有 0/0.5/1 三档无法排序）。
-# 当前导出的 parquet 只有上面 9 列，这两列都还没有，所以不能放进 REQUIRED_COLUMNS，
-# 否则读取会直接报字段缺失。
-OPTIONAL_COLUMNS = ("risk_state", "risk_score", "risk_event_time")
+# 这两列在早期的 9 列 parquet 里没有，所以不能放进 REQUIRED_COLUMNS，否则读取会报字段缺失。
+#
+# 刻意**不含** `risk_event_time`（验收 RCPT-2026-11-23-05 B-4）：它是训练标签，
+# 一旦随接口返回就是标签泄漏。当前 `_row_payload` 逐字段构造响应体，本来也不会带它，
+# 这里再从读入白名单里摘掉，杜绝「上游加了列、接口自动跟着漏」的可能。
+OPTIONAL_COLUMNS = ("risk_state", "risk_score")
 
 
 def _pred_week_source(raw: Any, week: int) -> str:
@@ -420,11 +450,16 @@ class RiskRepo:
                 404,
                 f"{sem} 没有 {stu_id} 的风险记录"
                 + ("（推理桥不可用，见 /api/health 的 bridge 字段）" if not bridge.enabled() else ""),
+                data=bridge_miss_data(),
             )
 
         weeks = [w for w in (self._bridge_row_payload(r, stu_id, sem) for r in weeks_raw) if w]
         if not weeks:
-            raise ApiError(404, f"{sem} 没有 {stu_id} 的风险记录（推理桥返回的数据不可用）")
+            raise ApiError(
+                404,
+                f"{sem} 没有 {stu_id} 的风险记录（推理桥返回的数据不可用）",
+                data=bridge_miss_data(),
+            )
 
         weeks.sort(key=lambda x: x["week"])
         return {
@@ -457,7 +492,11 @@ class RiskRepo:
             row = self._bridge_row_payload(raw, stu_id, sem) if raw else None
             if row:
                 return {**row, **BRIDGE_MARK}
-            raise ApiError(404, f"{stu_id} 在 {sem} 第 {wk} 周没有《{course_code}》的风险记录")
+            raise ApiError(
+                404,
+                f"{stu_id} 在 {sem} 第 {wk} 周没有《{course_code}》的风险记录",
+                data=bridge_miss_data(),
+            )
         return {**self._row_payload(hit.iloc[0]), "data_source": self.source}
 
     def student_curve(self, stu_id: str, semester: str | None) -> dict:

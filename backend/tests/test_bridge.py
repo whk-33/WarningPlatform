@@ -348,3 +348,55 @@ def test_pred_week_source_rejects_garbage(client, admin_headers, monkeypatch):
     })
     assert resp.status_code == 200, resp.text
     assert resp.json()["data"]["pred_event_week_source"] == "unknown"
+
+
+# ------------------------------------ 404 的可诊断性（验收 RCPT-05 追问 404/503）
+
+def test_404_body_says_why_when_algorithm_fails(client, admin_headers, fake_bridge):
+    """桥跑挂了：状态码维持 404，但 body 要能看出是「算法侧不可用」而不是「没这个学生」。"""
+
+    fake_bridge(
+        """
+        import json, sys
+        print(json.dumps({"error": "No module named 'torch'", "mode": "student"}))
+        sys.exit(1)
+        """
+    )
+    bridge.clear_cache()
+    resp = client.get(f"/api/risk/student/{NEW_STU}", headers=admin_headers,
+                      params={"semester": SAMPLE_SEM})
+    assert resp.status_code == 404
+    data = resp.json().get("data") or {}
+    assert data["reason"] == "algorithm_unavailable"
+    assert data["bridge"]["last_error"]["reason"] == "non_zero_exit"
+    assert "torch" in data["bridge"]["last_error"]["detail"]
+
+
+def test_404_body_says_bridge_disabled(client, admin_headers, monkeypatch):
+    monkeypatch.setenv("WP_BRIDGE", "0")
+    resp = client.get(f"/api/risk/student/{NEW_STU}", headers=admin_headers,
+                      params={"semester": SAMPLE_SEM})
+    assert resp.status_code == 404
+    assert resp.json()["data"]["reason"] == "bridge_disabled"
+
+
+def test_health_exposes_last_error(fake_bridge):
+    """/api/health 能直接看出上一次失败原因，排障不用翻日志。"""
+
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    fake_bridge(
+        """
+        import sys
+        print("boom", file=sys.stderr)
+        sys.exit(2)
+        """
+    )
+    bridge.clear_cache()
+    assert bridge.run("student", stu_id="s1", semester=SAMPLE_SEM) is None
+
+    with TestClient(app) as c:
+        info = c.get("/api/health").json()["data"]["bridge"]
+    assert info["last_error"]["reason"] == "non_zero_exit"

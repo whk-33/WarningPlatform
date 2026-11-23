@@ -59,6 +59,11 @@ _MISS = object()
 _CACHE: dict[tuple, tuple[float, Any]] = {}
 _LOCK = threading.Lock()
 
+# 最近一次失败的原因。验收方提过一个矛盾点：桥挂了到底回 404 还是 503。
+# 我们保持 404（前端空态不用改），但用这个字段把「基础设施坏了」和
+# 「这个学生确实没有数据」区分开——排障时不必翻日志。
+_LAST_ERROR: dict[str, Any] = {}
+
 
 # ------------------------------------------------------------------ 配置
 
@@ -116,7 +121,28 @@ def describe() -> dict:
         "python": python_exe(),
         "timeout_s": timeout_seconds(),
         "reason": reason,
+        "last_error": last_error(),
     }
+
+
+def last_error() -> dict:
+    """最近一次桥调用失败的原因（成功即清空）。空 dict 表示本次进程内还没失败过。"""
+
+    with _LOCK:
+        return dict(_LAST_ERROR)
+
+
+def _note_error(reason: str, detail: str = "") -> None:
+    with _LOCK:
+        _LAST_ERROR.clear()
+        _LAST_ERROR.update(
+            {"reason": reason, "detail": (detail or "")[:300], "at": time.time()}
+        )
+
+
+def _clear_error() -> None:
+    with _LOCK:
+        _LAST_ERROR.clear()
 
 
 def clear_cache() -> None:
@@ -207,10 +233,12 @@ def run(mode: str, **params: str | int) -> dict | None:
         )
     except subprocess.TimeoutExpired:
         log.warning("推理桥超时（%.0fs）：%s", timeout_seconds(), " ".join(cmd[-8:]))
+        _note_error("timeout", f"{timeout_seconds():.0f}s")
         _cache_set(key, None)
         return None
     except OSError as exc:
         log.warning("推理桥无法启动：%s（%s）", exc, python_exe())
+        _note_error("spawn_failed", f"{exc} ({python_exe()})")
         _cache_set(key, None)
         return None
 
@@ -220,15 +248,18 @@ def run(mode: str, **params: str | int) -> dict | None:
     if proc.returncode != 0 or (payload and payload.get("error")):
         err = (payload or {}).get("error") or (proc.stderr or "").strip().splitlines()[-1:]
         log.warning("推理桥失败（exit=%s，%.1fs）：%s", proc.returncode, elapsed, err)
+        _note_error("non_zero_exit" if proc.returncode else "error_payload", str(err))
         _cache_set(key, None)
         return None
 
     if payload is None:
         log.warning("推理桥输出不是 JSON（%.1fs）：%r", elapsed, (proc.stdout or "")[:200])
+        _note_error("bad_json", (proc.stdout or "")[:200])
         _cache_set(key, None)
         return None
 
     log.info("推理桥 %s 完成（%.1fs）", mode, elapsed)
+    _clear_error()
     _cache_set(key, payload)
     return payload
 
