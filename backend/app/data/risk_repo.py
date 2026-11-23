@@ -1,9 +1,11 @@
 """风险分数据源（阶段四）。
 
 对应 `docs/阶段四_风险接口契约.md`：唯一真实数据源是
-`algorithm/data/oulad/processed_full_demo/risk_scores.parquet`（9 字段冻结）。
+`algorithm/data/processed/processed_full_demo/risk_scores.parquet`（**11 字段**：
+9 个基础字段 + `risk_state` / `risk_score`，2026-11-23 起由 `20_score_offline.py` 直接产出）。
 
-该 parquet 被 `.gitignore` 忽略，克隆仓库后通常不存在，因此这里做了两级兜底：
+该 parquet 自 2026-11-23 起已入库（`processed_full_demo/` 白名单），克隆即可用；
+仍保留两级兜底，供数据包缺失时演示：
 
     1. parquet  —— 完整数据，季度/周次/学生全量
     2. mock     —— docs/mock_api/*.json（算法侧从真实 parquet 导出的样本）
@@ -314,6 +316,15 @@ class RiskRepo:
     def _row_payload(self, row: pd.Series) -> dict:
         level = int(row["risk_level"])
         name = str(row["risk_level_name"]) or LEVEL_NAMES.get(level, "")
+        # 契约 §3.1/§3.2/§3.4：risk_state 必出（0=模型预测 / 1=已发生）。
+        # 缺列时用 prob>=1.0 兜底——数据侧已验证两者完全等价（未发生行最大 0.9989）。
+        if "risk_state" in row.index and not pd.isna(row["risk_state"]):
+            state = int(row["risk_state"])
+        else:
+            state = int(float(row["risk_prob"]) >= 1.0)
+        # risk_score 是未饱和 logit，只有未发生行有值；已发生行为 null，前端据此不渲染成 100%
+        raw_score = row["risk_score"] if "risk_score" in row.index else None
+        score = None if raw_score is None or pd.isna(raw_score) else round(float(raw_score), 4)
         return {
             "stu_id": str(row["stu_id"]),
             "course_code": str(row["course_code"]),
@@ -323,6 +334,8 @@ class RiskRepo:
             "risk_level": level,
             "risk_level_name": name,
             "pred_event_week": int(row["pred_event_week"]),
+            "risk_state": state,
+            "risk_score": score,
             "top_factors": _parse_factors(row["top_factors"]),
         }
 
@@ -407,20 +420,35 @@ class RiskRepo:
         sub = self._slice(sem, wk)
         raw_rows = int(len(sub))
         # risk_scores 一门课一行，按 level 降序、prob 降序取首行，留下最危险那门。
-        # 同一周内 level 与 prob 单调等价（level 就是 prob 按该周阈值切出来的），
-        # 但阈值逐周变化、跨周不可比，所以仍以 level 为第一关键字。
+        # level 是学生级 max(课程级) 口径，与 admin_stat 完全一致，两边分级人数可以对账。
         sub = sub.sort_values(
             ["risk_level", "risk_prob", "stu_id"], ascending=[False, False, True]
         ).drop_duplicates(subset=["stu_id"], keep="first")
+
+        # 契约 §3.4：已发生（risk_state=1）的学生单独分组、整组排在最后。
+        # 不这么排的话，这批人 prob=1.0 恒占首屏（实测 2014J w8 前 20 名全是已发生），
+        # 真正需要干预的学生被挤到后面看不见。
+        if "risk_state" in sub.columns:
+            occurred = sub["risk_state"].astype("int64") == 1
+        else:  # 9 列旧数据兜底：prob 打满 1.0 即已发生（已验证与 risk_state 完全等价）
+            occurred = sub["risk_prob"].astype("float64") >= 1.0
 
         if level is not None:
             if level not in (0, 1, 2):
                 raise ApiError(400, f"level 只能是 0/1/2，收到 {level}")
             sub = sub[sub["risk_level"] == level]
+            occurred = occurred.loc[sub.index]
 
-        total = int(len(sub))
+        live = sub[~occurred]
+        # 排序：契约 §3.4 要求按 risk_score（未饱和 logit）降序。它与 prob 严格单调，
+        # 缺列时退回 prob，顺序等价。已发生组不参与排序，恒置后。
+        sort_key = "risk_score" if "risk_score" in live.columns else "risk_prob"
+        live = live.sort_values(sort_key, ascending=False, na_position="last")
+        merged = pd.concat([live, sub[occurred]]) if occurred.any() else live
+
+        total = int(len(merged))
         start = (page - 1) * size
-        chunk = sub.iloc[start:start + size]
+        chunk = merged.iloc[start:start + size]
 
         items = []
         for _, r in chunk.iterrows():
@@ -506,23 +534,14 @@ class RiskRepo:
         }
 
     def _occurred_mask(self, sub: pd.DataFrame) -> tuple[pd.Series, str]:
-        """标出「`prob` 打满 1.0」的学生，返回 (按 stu_id 的布尔序列, 判定来源)。
+        """标出「事件已发生」的学生，返回 (按 stu_id 的布尔序列, 判定来源)。
 
-        算法侧口径：`prob = 1.0` 的行是已发生事件（`risk_event_time <= week`），
+        权威判据是 `risk_state=1`（算法侧口径：`risk_event_time <= week`），
         这批人不算模型预测，应从预警率分母里拆出去单独展示。
 
-        ⚠️ 这个语义**目前无法验证**，不要当成事实使用：
-          - 导出的 parquet 只有 9 列，没有 `risk_state`，也没有 `risk_event_time`
-          - 用 `pred_event_week` 反推**不支持**该说法：2014J w8 共 2804 行 `prob=1.0`，
-            其中 `pred_event_week <= 8` 的仅 1 行（0.04%），`-1`（无事件）1978 行（70.5%）
-          - 合理解释是两列出自不同模型（prob 来自 TFT，pred_event_week 来自 DeepSurv），
-            本来就不能互相印证
-          - 曾经把「剔除后池内 max=0.9981、无一人等于 1.0」当作旁证，那是**无效证据**：
-            它只是剔除操作的定义，不构成"已发生"的语义证明
-
-        因此对外只能表述为「剔除 `prob` 打满 1.0 的样本后的预警率」，
-        等算法侧补导 `risk_state` / `risk_event_time` 后再谈"已发生"。
-        优先用权威字段 `risk_state`（=1 即已发生），缺失时才回退到 `prob >= 1.0` 代理。
+        `occurred_source` 会原样透给前端：`risk_state` 表示权威字段，
+        `prob_proxy` 表示数据缺列、退回「`prob` 打满 1.0」的代理
+        （11-23 实测两者在 2014J 上完全等价：已发生行 prob 恒 1.0，未发生行最大 0.9989）。
         """
 
         if "risk_state" in sub.columns:
