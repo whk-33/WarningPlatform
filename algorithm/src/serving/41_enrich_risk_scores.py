@@ -19,15 +19,18 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import sys
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
-DEFAULT_PROCESSED = PROJECT_ROOT / "algorithm" / "data" / "oulad" / "processed_full_demo"
 REPORT = PROJECT_ROOT / "algorithm" / "reports" / "serving_metrics.json"
 LEVEL_CN = {0: "低", 1: "中", 2: "高"}
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from paths import resolve_processed  # noqa: E402
 
 
 def logit(p: np.ndarray, eps: float = 1e-6) -> np.ndarray:
@@ -51,9 +54,9 @@ def load_thresholds(T: int) -> list[tuple[float, float]]:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--processed", default=str(DEFAULT_PROCESSED))
+    ap.add_argument("--processed", default=None, help="默认 WP_PROCESSED 或自动探测")
     args = ap.parse_args()
-    processed = Path(args.processed)
+    processed = Path(args.processed) if args.processed else resolve_processed("risk_scores.parquet")
     rs_path = processed / "risk_scores.parquet"
 
     df = pd.read_parquet(rs_path)

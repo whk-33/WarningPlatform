@@ -34,23 +34,25 @@ except ImportError:
 
 # ================================================================= 常量
 
+from paths import describe_models_hint, resolve_models, resolve_processed  # noqa: E402
+
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
-MODELS_DIR = PROJECT_ROOT / "algorithm" / "models"
 REPORTS_DIR = PROJECT_ROOT / "algorithm" / "reports"
-CACHE_DIR = PROJECT_ROOT / "algorithm" / "data" / "oulad" / "processed_full_demo" / "online_cache"
-SUBGRAPH_DIR = PROJECT_ROOT / "algorithm" / "data" / "oulad" / "subgraph"
 
 LEVEL_CN = {0: "低", 1: "中", 2: "高"}
 
 
 def _find_processed() -> Path:
-    for cand in [
-        PROJECT_ROOT / "algorithm" / "data" / "oulad" / "processed_full_demo",
-        PROJECT_ROOT / "algorithm" / "data" / "oulad" / "processed_demo",
-    ]:
-        if (cand / "tft_weekly.parquet").exists():
-            return cand
-    raise FileNotFoundError("找不到 processed 目录（缺 tft_weekly.parquet）")
+    """打分产物目录：WP_PROCESSED 优先，其次多候选探测（见 src/paths.py）。"""
+    return resolve_processed()
+
+
+def _models_dir() -> Path:
+    return resolve_models()
+
+
+def _subgraph_dir() -> Path:
+    return _find_processed() / "subgraph"
 
 
 # ============================================================== 模型加载
@@ -60,9 +62,9 @@ def _load_tft():
     """加载 TFT 模型 + checkpoint（含 static/obs/known 列名、均值/方差）。"""
     from models.tft import TFTLite  # noqa: E402
 
-    paths = sorted(glob.glob(str(MODELS_DIR / "model_tft_*.pt")))
+    paths = sorted(glob.glob(str(_models_dir() / "model_tft_*.pt")))
     if not paths:
-        raise FileNotFoundError("缺少 model_tft_*.pt")
+        raise FileNotFoundError(describe_models_hint(_models_dir(), "model_tft_*.pt"))
     ckpt = torch.load(paths[-1], weights_only=False, map_location="cpu")
     model = TFTLite(len(ckpt["static_cols"]), len(ckpt["obs_cols"]), len(ckpt["known_cols"]))
     model.load_state_dict(ckpt["state_dict"])
@@ -74,9 +76,9 @@ def _load_tft():
 def _load_deepsurv():
     from models.deepsurv import DeepSurv  # noqa: E402
 
-    paths = sorted(glob.glob(str(MODELS_DIR / "model_deepsurv_*.pt")))
+    paths = sorted(glob.glob(str(_models_dir() / "model_deepsurv_*.pt")))
     if not paths:
-        raise FileNotFoundError("缺少 model_deepsurv_*.pt")
+        raise FileNotFoundError(describe_models_hint(_models_dir(), "model_deepsurv_*.pt"))
     ckpt = torch.load(paths[-1], weights_only=False, map_location="cpu")
     model = DeepSurv(n_features=ckpt.get("n_features", 10),
                      hidden=ckpt.get("hidden", 32),
@@ -90,7 +92,7 @@ def _load_deepsurv():
 def _load_han():
     from models.han import HAN  # noqa: E402
 
-    paths = sorted(glob.glob(str(MODELS_DIR / "model_han_*.pt")))
+    paths = sorted(glob.glob(str(_models_dir() / "model_han_*.pt")))
     if not paths:
         return None, None
     ckpt = torch.load(paths[-1], weights_only=False, map_location="cpu")
@@ -383,7 +385,7 @@ def generate_subgraph(stu_id: str, semester: str, week: int = 8) -> dict:
     candidates = [
         processed / "subgraph" / f"{stu_id}.json",
         Path(__file__).resolve().parents[2] / "data" / "oulad" / "subgraph" / f"{stu_id}.json",
-        SUBGRAPH_DIR / f"{stu_id}.json",
+        _subgraph_dir() / f"{stu_id}.json",
     ]
     for c in candidates:
         if c.exists():

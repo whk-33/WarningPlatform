@@ -18,7 +18,6 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "algorithm" / "src"))
 
-PROCESSED = ROOT / "algorithm" / "data" / "oulad" / "processed_full_demo"
 REPORTS = ROOT / "algorithm" / "reports"
 
 from training.common import average_precision, brier, evaluate, recall_at_fraction, roc_auc  # noqa: E402
@@ -135,8 +134,10 @@ CONTRACT += ["risk_state", "risk_score"]
 
 @pytest.fixture(scope="module")
 def scores():
-    path = PROCESSED / "risk_scores.parquet"
-    if not path.exists():
+    from paths import resolve_processed
+    try:
+        path = resolve_processed("risk_scores.parquet") / "risk_scores.parquet"
+    except FileNotFoundError:
         pytest.skip("缺少 risk_scores.parquet，先跑 serving/20_score_offline.py")
     return __import__("pandas").read_parquet(path)
 

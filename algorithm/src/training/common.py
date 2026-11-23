@@ -8,7 +8,6 @@
 from __future__ import annotations
 
 import json
-import os
 import random
 from pathlib import Path
 
@@ -20,27 +19,26 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_PROCESSED = PROJECT_ROOT / "algorithm" / "data" / "oulad" / "processed_full_demo"
 DEFAULT_INTERIM = PROJECT_ROOT / "algorithm" / "data" / "oulad" / "interim_demo"
 REPORTS_DIR = PROJECT_ROOT / "algorithm" / "reports"
-MODELS_DIR = PROJECT_ROOT / "algorithm" / "models"
-SUBGRAPH_DIR = PROJECT_ROOT / "algorithm" / "data" / "oulad" / "processed_full_demo" / "subgraph"
+
+from paths import resolve_models as _resolve_models  # noqa: E402
+from paths import resolve_interim as _resolve_interim_dir  # noqa: E402
+from paths import resolve_processed as _resolve_processed_dir  # noqa: E402
+
+MODELS_DIR = _resolve_models()
+SUBGRAPH_DIR = DEFAULT_PROCESSED / "subgraph"
 
 
 def resolve_processed(arg: str | None = None) -> Path:
-    """训练脚本的 --processed 参数优先级：命令行 > WP_PROCESSED > 默认全量目录。"""
+    """优先级：命令行 > WP_PROCESSED > 多候选探测（见 algorithm/src/paths.py）。"""
     if arg:
         return Path(arg).resolve()
-    env = os.environ.get("WP_PROCESSED")
-    if env:
-        return Path(env).resolve()
-    return DEFAULT_PROCESSED
+    return _resolve_processed_dir()
 
 
 def resolve_interim(arg: str | None = None) -> Path:
     if arg:
         return Path(arg).resolve()
-    env = os.environ.get("WP_INTERIM")
-    if env:
-        return Path(env).resolve()
-    return DEFAULT_INTERIM
+    return _resolve_interim_dir()
 
 
 def load(processed: Path, name: str) -> pd.DataFrame:

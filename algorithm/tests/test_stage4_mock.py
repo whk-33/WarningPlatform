@@ -3,6 +3,7 @@
 不依赖 torch，仅校验字段契约（§2）与 mock 文件结构（§3）。
 """
 import json
+import sys
 from pathlib import Path
 
 import pandas as pd
@@ -10,7 +11,9 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 MOCK_DIR = ROOT / "docs" / "mock_api"
-PROCESSED = ROOT / "algorithm" / "data" / "oulad" / "processed_full_demo"
+
+sys.path.insert(0, str(ROOT / "algorithm" / "src"))
+from paths import resolve_processed  # noqa: E402
 
 REQUIRED_COLS = [
     "stu_id", "course_code", "semester", "week",
@@ -22,7 +25,7 @@ WEEKLY_KEYS = set(REQUIRED_COLS) - {"top_factors"} | {"top_factors"}
 
 @pytest.fixture(scope="module")
 def parquet():
-    return pd.read_parquet(PROCESSED / "risk_scores.parquet")
+    return pd.read_parquet(resolve_processed("risk_scores.parquet") / "risk_scores.parquet")
 
 
 def test_parquet_contract(parquet):
