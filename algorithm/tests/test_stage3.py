@@ -113,6 +113,8 @@ SEM = "2014J"
 class TestOnlineRiskBridge:
     def test_weekly_offline_consistent(self):
         """online weekly 与 offline parquet 一致（关键字段 risk_level / risk_prob / pred_event_week）。"""
+        if not (RISK_PARQUET.parent / "deepsurv_pred.parquet").exists():
+            pytest.skip("缺 M3 产物 deepsurv_pred.parquet：桥会走现场推理并保守返回 -1，pred_event_week 不可比")
         offline = pd.read_parquet(RISK_PARQUET)
         hit = offline[(offline["stu_id"] == STU_AT_RISK)
                       & (offline["course_code"] == COURSE_AT_RISK)
