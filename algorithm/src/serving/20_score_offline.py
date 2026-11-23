@@ -16,7 +16,7 @@
 5. pred_event_week 来自 DeepSurv，-1 表示本学期无风险；
 6. top_factors 用 TFT 每一步的观测变量选择权重 × 该变量的标准化偏离，取前 3，中文名与图表共用 FEATURE_CN。
 
-运行：py -3 algorithm/src/serving/20_score_offline.py
+运行：python algorithm/src/serving/20_score_offline.py
 """
 from __future__ import annotations
 

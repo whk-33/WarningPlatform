@@ -7,7 +7,7 @@
   4. 原子替换（os.replace）
 
 运行（模拟）：
-  py -3 algorithm/src/serving/31_weekly_run.py `
+  python algorithm/src/serving/31_weekly_run.py `
       --new_tft algorithm/data/oulad/processed_new/tft_weekly.parquet
 """
 from __future__ import annotations

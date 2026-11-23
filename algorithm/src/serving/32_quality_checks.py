@@ -1,6 +1,6 @@
 """阶段三质量门禁：缺失率 + PSI + 标签缺失。
 
-运行：py -3 algorithm/src/serving/32_quality_checks.py `
+运行：python algorithm/src/serving/32_quality_checks.py `
         --baseline algorithm/data/oulad/processed_full_demo/tft_weekly.parquet `
         --new algorithm/data/oulad/processed_new/tft_weekly.parquet
 """

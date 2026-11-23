@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-01",
+  "generated_at": "2026-11-23",
   "dataset": {
     "name": "OULAD (Open University Learning Analytics Dataset)",
     "license": "CC BY 4.0",
@@ -964,14 +964,14 @@
       0.7549
     ],
     "reproduce": [
-      "py -3 algorithm/src/training/train_baseline.py",
-      "py -3 algorithm/src/training/train_dkt.py",
-      "py -3 algorithm/src/training/train_tft.py",
-      "py -3 algorithm/src/training/train_deepsurv.py",
-      "py -3 algorithm/src/training/train_han.py",
-      "py -3 algorithm/src/training/train_causal.py",
-      "py -3 algorithm/src/training/explain_han.py",
-      "py -3 algorithm/src/serving/20_score_offline.py"
+      "python algorithm/src/training/train_baseline.py",
+      "python algorithm/src/training/train_dkt.py",
+      "python algorithm/src/training/train_tft.py",
+      "python algorithm/src/training/train_deepsurv.py",
+      "python algorithm/src/training/train_han.py",
+      "python algorithm/src/training/train_causal.py",
+      "python algorithm/src/training/explain_han.py",
+      "python algorithm/src/serving/20_score_offline.py"
     ]
   },
   "environment": {

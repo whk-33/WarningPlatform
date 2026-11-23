@@ -6,7 +6,7 @@
 3. 对外契约 risk_scores.parquet 的字段/取值范围（数据存在时才跑）
 4. 模型卡与报告是否存在
 
-运行：py -3 -m pytest algorithm/tests/test_stage2.py -q
+运行：python -m pytest algorithm/tests/test_stage2.py -q
 """
 import json
 import sys

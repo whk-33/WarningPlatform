@@ -1,4 +1,4 @@
-"""按需推理桥：后端可通过 `py -3 30_online_risk.py` 调用，stdout 返回 JSON。
+"""按需推理桥：后端可通过 `python 30_online_risk.py` 调用，stdout 返回 JSON。
 
 三种模式：
   weekly    单周风险（risk_prob / risk_level / pred_event_week / top_factors）
