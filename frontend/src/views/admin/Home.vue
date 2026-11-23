@@ -168,9 +168,14 @@ onBeforeUnmount(() => {
 
           <template v-if="riskStat.total">
             <div class="risk-total">
-              <span class="risk-total-value">{{ riskStat.total }}</span>
-              <span class="muted">条学生-课程记录</span>
+              <span class="risk-total-value">
+                {{ fmtPercent(riskStat.pool_alert_rate ?? riskStat.alert_rate) }}
+              </span>
+              <span class="muted">风险池预警率</span>
             </div>
+            <p class="muted risk-note">
+              风险池 = 尚未发生风险的在校生；本周纳入预测 {{ riskStat.total }} 条学生-课程记录
+            </p>
             <div class="risk-grid">
               <div v-for="item in riskCards" :key="item.label" class="risk-item">
                 <div class="stat-label">{{ item.label }}</div>
@@ -178,12 +183,9 @@ onBeforeUnmount(() => {
               </div>
             </div>
             <div class="risk-foot">
-              <el-tag type="warning" effect="plain" size="small">
-                全表预警率 {{ fmtPercent(riskStat.alert_rate) }}
-              </el-tag>
-              <el-tooltip content="剔除已发生事件后的学生-周样本口径，对外汇报用" placement="top">
-                <el-tag type="info" effect="plain" size="small">
-                  风险池预警率 {{ fmtPercent(riskStat.pool_alert_rate ?? riskStat.alert_rate) }}
+              <el-tooltip content="含已发生事件的全表口径，仅作对照" placement="top">
+                <el-tag type="warning" effect="plain" size="small">
+                  全表预警率 {{ fmtPercent(riskStat.alert_rate) }}（含已发生事件）
                 </el-tag>
               </el-tooltip>
               <span class="muted">等级口径：低 / 中 / 高</span>
