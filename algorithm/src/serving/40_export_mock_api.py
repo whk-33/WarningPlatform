@@ -32,6 +32,7 @@ MOCK_WEEK = 8
 CONTRACT_COLS = [
     "stu_id", "course_code", "semester", "week",
     "risk_prob", "risk_level", "risk_level_name", "pred_event_week",
+    "risk_state", "risk_score",
 ]
 
 
@@ -41,6 +42,8 @@ def _row_to_dict(row: pd.Series) -> dict:
     d["risk_prob"] = round(float(d["risk_prob"]), 4)
     d["risk_level"] = int(d["risk_level"])
     d["pred_event_week"] = int(d["pred_event_week"])
+    d["risk_state"] = int(d["risk_state"])
+    d["risk_score"] = None if pd.isna(d["risk_score"]) else round(float(d["risk_score"]), 4)
     return d
 
 
@@ -81,10 +84,10 @@ def main() -> int:
     (OUT_DIR / "factors.json").write_text(
         json.dumps(factors, ensure_ascii=False, indent=2), encoding="utf-8")
 
-    # 4) admin_list：分页列表（week=8，按 risk_prob 降序，第 1 页 20 条）
+    # 4) admin_list：分页列表（week=8，按 risk_score 降序、已发生置后，第 1 页 20 条）
     pool = df[(df.semester == ANCHOR_SEMESTER) & (df.week == MOCK_WEEK)]
     total = len(pool)
-    page_rows = pool.sort_values("risk_prob", ascending=False).head(20)
+    page_rows = pool.sort_values("risk_score", ascending=False, na_position="last").head(20)
     admin_list = {
         "semester": ANCHOR_SEMESTER, "week": MOCK_WEEK,
         "page": 1, "size": 20, "total": int(total),
@@ -93,9 +96,11 @@ def main() -> int:
     (OUT_DIR / "admin_list.json").write_text(
         json.dumps(admin_list, ensure_ascii=False, indent=2), encoding="utf-8")
 
-    # 5) admin_stat：各等级人数 + 预警率
+    # 5) admin_stat：各等级人数 + 三指标（口径见契约 §3.5）
     cnt = pool["risk_level"].value_counts().to_dict()
     n_high, n_mid = int(cnt.get(2, 0)), int(cnt.get(1, 0))
+    at_risk = pool[pool.risk_state == 0]
+    occurred = int((pool.risk_state == 1).sum())
     admin_stat = {
         "semester": ANCHOR_SEMESTER, "week": MOCK_WEEK,
         "total": int(total),
@@ -103,6 +108,9 @@ def main() -> int:
         "level_1": n_mid,
         "level_2": n_high,
         "alert_rate": round((n_high + n_mid) / total, 4) if total else 0.0,
+        "pool_alert_rate": round(float((at_risk.risk_level >= 1).mean()), 4) if len(at_risk) else 0.0,
+        "occurred_rate": round(occurred / total, 4) if total else 0.0,
+        "occurred_source": "risk_state",
     }
     (OUT_DIR / "admin_stat.json").write_text(
         json.dumps(admin_stat, ensure_ascii=False, indent=2), encoding="utf-8")
