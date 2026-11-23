@@ -7,7 +7,7 @@
     事件已发生（0 < risk_event_time <= t）的样本剔除 —— 这不是预测题。
 
 用法：
-    py -3 algorithm/src/training/train_baseline.py --week 8
+    python algorithm/src/training/train_baseline.py --week 8
 """
 from __future__ import annotations
 

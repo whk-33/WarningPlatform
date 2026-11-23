@@ -1,6 +1,6 @@
 """阶段三算法侧测试：30_online_risk 桥 + 32_quality_checks 门禁。
 
-运行：py -3 -m pytest algorithm/tests/test_stage3.py -v
+运行：python -m pytest algorithm/tests/test_stage3.py -v
 """
 from __future__ import annotations
 

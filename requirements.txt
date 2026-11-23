@@ -9,3 +9,7 @@ jupyter
 pytest>=8.0
 pyyaml>=6.0
 Faker>=24.0
+
+# 推理桥（algorithm/src/serving/30_online_risk.py）必需
+# CPU 环境安装：pip install torch --index-url https://download.pytorch.org/whl/cpu
+torch>=2.0

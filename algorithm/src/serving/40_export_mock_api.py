@@ -1,7 +1,7 @@
 """阶段四：从 risk_scores.parquet 导出 5 个风险接口的 mock JSON，供前端并行开发（C6 路线 B）。
 
 用法：
-    py -3 algorithm/src/serving/40_export_mock_api.py
+    python algorithm/src/serving/40_export_mock_api.py
 输出：
     docs/mock_api/weekly.json      GET /api/risk/weekly
     docs/mock_api/student.json     GET /api/risk/student/{stu_id}

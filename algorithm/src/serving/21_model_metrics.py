@@ -3,7 +3,7 @@
 只读 reports/*.json 与 models/ 下的产物，不重新训练、不改任何数字，
 保证"报告里的指标"和"模型卡里的指标"永远一致。
 
-运行：py -3 algorithm/src/serving/21_model_metrics.py
+运行：python algorithm/src/serving/21_model_metrics.py
 """
 from __future__ import annotations
 
@@ -110,14 +110,14 @@ def main() -> int:
             "alert_target": "逐周约 15% 预警率（高 5% + 中 10%）",
             "calibration_week8": (serving.get("thresholds_by_week") or {}).get("8"),
             "reproduce": [
-                "py -3 algorithm/src/training/train_baseline.py",
-                "py -3 algorithm/src/training/train_dkt.py",
-                "py -3 algorithm/src/training/train_tft.py",
-                "py -3 algorithm/src/training/train_deepsurv.py",
-                "py -3 algorithm/src/training/train_han.py",
-                "py -3 algorithm/src/training/train_causal.py",
-                "py -3 algorithm/src/training/explain_han.py",
-                "py -3 algorithm/src/serving/20_score_offline.py",
+                "python algorithm/src/training/train_baseline.py",
+                "python algorithm/src/training/train_dkt.py",
+                "python algorithm/src/training/train_tft.py",
+                "python algorithm/src/training/train_deepsurv.py",
+                "python algorithm/src/training/train_han.py",
+                "python algorithm/src/training/train_causal.py",
+                "python algorithm/src/training/explain_han.py",
+                "python algorithm/src/serving/20_score_offline.py",
             ],
         },
         "environment": {"python": "3.13", "torch": "2.15.0+cpu", "sklearn": "不可用（指标与模型均为手写）"},

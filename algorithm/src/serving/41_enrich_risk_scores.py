@@ -12,7 +12,7 @@
 5. 原子替换写回 parquet，并打印逐周预警率（全表 / 风险池）。
 
 用法：
-    py -3 algorithm/src/serving/41_enrich_risk_scores.py [--processed <dir>]
+    python algorithm/src/serving/41_enrich_risk_scores.py [--processed <dir>]
 """
 from __future__ import annotations
 
